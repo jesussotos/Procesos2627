@@ -5,13 +5,12 @@ const logica = require('./logica');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware para entender JSON y formularios
 app.use(express.json());
 
-// Servir los archivos estáticos del frontend (cliente)
+// Servir la capa de cliente (archivos estáticos)
 app.use(express.static(path.join(__dirname, '../cliente')));
 
-// --- RUTAS DE LA API (Capa de Presentación Backend) ---
+// --- RUTAS PÚBLICAS ---
 
 // Registrar usuario
 app.post('/api/usuarios/registro', (req, res) => {
@@ -24,8 +23,39 @@ app.post('/api/usuarios/registro', (req, res) => {
   }
 });
 
-// Listar usuarios
-app.get('/api/usuarios', (req, res) => {
+// Iniciar sesión
+app.post('/api/usuarios/login', (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const resultado = logica.iniciarSesion(email, password);
+    res.json(resultado);
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+});
+
+// Middleware de autenticación
+const requerirAutenticacion = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Acceso no autorizado' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    req.usuario = logica.verificarToken(token);
+    next();
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+};
+
+// --- RUTAS PROTEGIDAS ---
+
+app.get('/api/usuarios/me', requerirAutenticacion, (req, res) => {
+  res.json({ usuario: req.usuario });
+});
+
+app.get('/api/usuarios', requerirAutenticacion, (req, res) => {
   try {
     const usuarios = logica.listarUsuarios();
     res.json(usuarios);
@@ -34,31 +64,9 @@ app.get('/api/usuarios', (req, res) => {
   }
 });
 
-// Comprobar si un usuario está activo
-app.get('/api/usuarios/:email/activo', (req, res) => {
-  try {
-    const activo = logica.estaActivo(req.params.email);
-    res.json({ email: req.params.email, activo });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+// Arrancar el servidor
+const servidor = app.listen(PORT, () => {
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
 
-// Eliminar usuario
-app.delete('/api/usuarios/:email', (req, res) => {
-  try {
-    logica.eliminarUsuario(req.params.email);
-    res.json({ mensaje: 'Usuario eliminado correctamente' });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Iniciar servidor solo si no estamos en modo test
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
-  });
-}
-
-module.exports = app;
+module.exports = { app, servidor };

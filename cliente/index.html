@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaaS App - Sprint 1</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; max-width: 500px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; }
+    input { width: 100%; padding: 8px; box-sizing: border-box; }
+    button { padding: 10px 15px; cursor: pointer; }
+    .error { color: red; margin-top: 10px; }
+    .exito { color: green; margin-top: 10px; }
+    .oculto { display: none; }
+  </style>
+</head>
+<body>
+
+  <h1>Aplicación SaaS - Sprint 1</h1>
+  <div id="mensaje"></div>
+
+  <!-- Vista: Invitado (Registro / Login) -->
+  <div id="vista-invitado">
+    <h2>Registro</h2>
+    <form id="form-registro">
+      <div class="form-group">
+        <label>Email:</label>
+        <input type="email" id="reg-email" required>
+      </div>
+      <div class="form-group">
+        <label>Contraseña:</label>
+        <input type="password" id="reg-password" required>
+      </div>
+      <button type="submit">Registrarse</button>
+    </form>
+
+    <hr>
+
+    <h2>Iniciar Sesión</h2>
+    <form id="form-login">
+      <div class="form-group">
+        <label>Email:</label>
+        <input type="email" id="login-email" required>
+      </div>
+      <div class="form-group">
+        <label>Contraseña:</label>
+        <input type="password" id="login-password" required>
+      </div>
+      <button type="submit">Entrar</button>
+    </form>
+  </div>
+
+  <!-- Vista: Autenticado -->
+  <div id="vista-usuario" class="oculto">
+    <h2>Bienvenido, <span id="user-email"></span></h2>
+    <p>Estado de la sesión: <strong>Autenticado</strong></p>
+    <button id="btn-logout">Cerrar Sesión</button>
+  </div>
+
+  <script src="rest.js"></script>
+  <script>
+    const msgDiv = document.getElementById('mensaje');
+
+    function mostrarMensaje(texto, esError = false) {
+      msgDiv.textContent = texto;
+      msgDiv.className = esError ? 'error' : 'exito';
+    }
+
+    async function actualizarInterfaz() {
+      const usuario = await REST.obtenerPerfil();
+      if (usuario) {
+        document.getElementById('vista-invitado').classList.add('oculto');
+        document.getElementById('vista-usuario').classList.remove('oculto');
+        document.getElementById('user-email').textContent = usuario.email;
+      } else {
+        document.getElementById('vista-invitado').classList.remove('oculto');
+        document.getElementById('vista-usuario').classList.add('oculto');
+      }
+    }
+
+    // Eventos
+    document.getElementById('form-registro').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await REST.registrar(
+          document.getElementById('reg-email').value,
+          document.getElementById('reg-password').value
+        );
+        mostrarMensaje('Usuario registrado con éxito. Ahora puedes iniciar sesión.');
+      } catch (err) {
+        mostrarMensaje(err.message, true);
+      }
+    });
+
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await REST.login(
+          document.getElementById('login-email').value,
+          document.getElementById('login-password').value
+        );
+        mostrarMensaje('Sesión iniciada correctamente.');
+        actualizarInterfaz();
+      } catch (err) {
+        mostrarMensaje(err.message, true);
+      }
+    });
+
+    document.getElementById('btn-logout').addEventListener('submit', () => {});
+    document.getElementById('btn-logout').onclick = () => {
+      REST.cerrarSesion();
+      mostrarMensaje('Sesión cerrada.');
+      actualizarInterfaz();
+    };
+
+    // Comprobar sesión al cargar la página
+    actualizarInterfaz();
+  </script>
+</body>
+</html>
