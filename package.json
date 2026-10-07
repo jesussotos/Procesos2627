@@ -1,0 +1,28 @@
+{
+  "name": "procesos2627",
+  "version": "1.0.0",
+  "description": "Proyecto de Procesos de Ingeniería del Software curso 26-27",
+  "main": "servidor/api.js",
+  "scripts": {
+    "start": "node servidor/api.js",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jesussotos/Procesos2627.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jesussotos/Procesos2627/issues"
+  },
+  "homepage": "https://github.com/jesussotos/Procesos2627#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "jest": "^30.5.2"
+  }
+}
