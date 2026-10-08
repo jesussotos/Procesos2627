@@ -1,40 +1,22 @@
 const express = require('express');
 const path = require('path');
+const morgan = require('morgan'); // <--- Importar Morgan
+require('dotenv').config();
 const logica = require('./logica');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-
-// Servir la capa de cliente (archivos estáticos)
+app.use(morgan('dev')); // <--- Registrar middleware de logs en formato 'dev'
 app.use(express.static(path.join(__dirname, '../cliente')));
 
-// --- RUTAS PÚBLICAS ---
 
-// Registrar usuario
-app.post('/api/usuarios/registro', (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const nuevoUsuario = logica.registrarUsuario(email, password);
-    res.status(201).json(nuevoUsuario);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
 
-// Iniciar sesión
-app.post('/api/usuarios/login', (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const resultado = logica.iniciarSesion(email, password);
-    res.json(resultado);
-  } catch (error) {
-    res.status(401).json({ error: error.message });
-  }
-});
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '../cliente')));
 
-// Middleware de autenticación
+// Middleware de autenticación genérico
 const requerirAutenticacion = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -49,24 +31,56 @@ const requerirAutenticacion = (req, res, next) => {
   }
 };
 
+// Middleware para restringir por Rol (RBAC)
+const requerirRol = (rolRequerido) => {
+  return (req, res, next) => {
+    if (!req.usuario || req.usuario.rol !== rolRequerido) {
+      return res.status(403).json({ error: 'Acceso prohibido: permisos insuficientes' });
+    }
+    next();
+  };
+};
+
+// --- RUTAS PÚBLICAS ---
+
+app.post('/api/usuarios/registro', async (req, res) => {
+  try {
+    const { email, password, rol } = req.body;
+    const nuevoUsuario = await logica.registrarUsuario(email, password, rol);
+    res.status(201).json(nuevoUsuario);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/usuarios/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const resultado = await logica.iniciarSesion(email, password);
+    res.json(resultado);
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+});
+
 // --- RUTAS PROTEGIDAS ---
 
 app.get('/api/usuarios/me', requerirAutenticacion, (req, res) => {
   res.json({ usuario: req.usuario });
 });
 
-app.get('/api/usuarios', requerirAutenticacion, (req, res) => {
+// Ruta protegida SOLO para Administradores
+app.get('/api/usuarios', requerirAutenticacion, requerirRol('admin'), async (req, res) => {
   try {
-    const usuarios = logica.listarUsuarios();
+    const usuarios = await logica.listarUsuarios();
     res.json(usuarios);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Arrancar el servidor
-const servidor = app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Servidor con SQLite corriendo en http://localhost:${PORT}`);
 });
 
-module.exports = { app, servidor };
+module.exports = app;

@@ -1,62 +1,68 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const datos = require('./datos');
+require('dotenv').config();
 
-const SECRET_KEY = process.env.JWT_SECRET || 'secreto_super_seguro_desarrollo';
+const JWT_SECRET = process.env.JWT_SECRET || 'secreto_por_defecto_desarrollo';
 
 module.exports = {
-  registrarUsuario: (email, password) => {
-    if (!email || !password) throw new Error('Datos incompletos');
-    if (datos.buscarPorEmail(email)) throw new Error('El usuario ya existe');
+  // Registro asíncrono
+  registrarUsuario: async (email, password, rol = 'usuario') => {
+    const existe = await datos.buscarPorEmail(email);
+    if (existe) {
+      throw new Error('El usuario ya existe');
+    }
 
-    // Hash de contraseña seguro (apartado 5)
-    const passwordHash = bcrypt.hashSync(password, 10);
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
 
     const nuevoUsuario = {
       email,
       password: passwordHash,
-      rol: 'usuario',
+      rol,
       confirmado: false
     };
-    datos.guardar(nuevoUsuario);
-    return { email: nuevoUsuario.email, rol: nuevoUsuario.rol };
+
+    const usuarioGuardado = await datos.guardar(nuevoUsuario);
+    return { email: usuarioGuardado.email, rol: usuarioGuardado.rol };
   },
 
-  iniciarSesion: (email, password) => {
-    const usuario = datos.buscarPorEmail(email);
-    if (!usuario) throw new Error('Credenciales incorrectas');
+  // Inicio de sesión asíncrono
+  iniciarSesion: async (email, password) => {
+    const usuario = await datos.buscarPorEmail(email);
+    if (!usuario) {
+      throw new Error('Credenciales incorrectas');
+    }
 
-    const passwordValida = bcrypt.compareSync(password, usuario.password);
-    if (!passwordValida) throw new Error('Credenciales incorrectas');
+    const passwordValida = await bcrypt.compare(password, usuario.password);
+    if (!passwordValida) {
+      throw new Error('Credenciales incorrectas');
+    }
 
-    // Generar Token de sesión
+    // Incluimos el rol en el token JWT
     const token = jwt.sign(
-      { email: usuario.email, rol: usuario.rol },
-      SECRET_KEY,
+      { id: usuario.id, email: usuario.email, rol: usuario.rol },
+      JWT_SECRET,
       { expiresIn: '2h' }
     );
 
-    return { token, usuario: { email: usuario.email, rol: usuario.rol } };
+    return {
+      token,
+      usuario: { email: usuario.email, rol: usuario.rol }
+    };
   },
 
+  // Verificación de token JWT
   verificarToken: (token) => {
     try {
-      return jwt.verify(token, SECRET_KEY);
-    } catch (e) {
-      throw new Error('Sesión no válida o expirada');
+      return jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+      throw new Error('Token inválido o expirado');
     }
   },
 
-  listarUsuarios: () => datos.obtenerTodos().map(u => ({ email: u.email, rol: u.rol, confirmado: u.confirmado })),
-
-  estaActivo: (email) => {
-    const usuario = datos.buscarPorEmail(email);
-    if (!usuario) return false;
-    return usuario.confirmado === true;
-  },
-
-  eliminarUsuario: (email) => {
-    if (!datos.buscarPorEmail(email)) throw new Error('Usuario no encontrado');
-    return datos.eliminarPorEmail(email);
+  // Listar usuarios (solo accesible por Administradores)
+  listarUsuarios: async () => {
+    return await datos.obtenerTodos();
   }
 };

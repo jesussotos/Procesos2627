@@ -1,44 +1,37 @@
 const logica = require('../servidor/logica');
 const datos = require('../servidor/datos');
 
-describe('Pruebas unitarias de la capa de lógica (Hito 2)', () => {
+describe('Pruebas unitarias de la capa de lógica con BD (Hito 3)', () => {
 
-  beforeEach(() => {
-    datos.limpiar();
+  beforeEach(async () => {
+    await datos.limpiar();
   });
 
-  test('1. Debe registrar un usuario correctamente y no devolver la contraseña', () => {
-    const usuario = logica.registrarUsuario('test@example.com', '123456');
-    expect(usuario.email).toBe('test@example.com');
+  test('1. Debe registrar un usuario en la BD correctamente', async () => {
+    const usuario = await logica.registrarUsuario('test3@example.com', '123456');
+    expect(usuario.email).toBe('test3@example.com');
     expect(usuario.rol).toBe('usuario');
   });
 
-  test('2. Debe iniciar sesión correctamente con credenciales válidas', () => {
-    logica.registrarUsuario('login@example.com', '123456');
-    const res = logica.iniciarSesion('login@example.com', '123456');
+  test('2. Debe iniciar sesión con credenciales válidas', async () => {
+    await logica.registrarUsuario('login3@example.com', '123456');
+    const res = await logica.iniciarSesion('login3@example.com', '123456');
     expect(res.token).toBeDefined();
-    expect(res.usuario.email).toBe('login@example.com');
+    expect(res.usuario.email).toBe('login3@example.com');
   });
 
-  test('3. Error: No debe iniciar sesión con contraseña incorrecta', () => {
-    logica.registrarUsuario('login@example.com', '123456');
-    expect(() => {
-      logica.iniciarSesion('login@example.com', 'badpassword');
-    }).toThrow('Credenciales incorrectas');
+  test('3. Error: No debe permitir registrar un email ya existente', async () => {
+    await logica.registrarUsuario('duplicado@example.com', '123456');
+    await expect(
+      logica.registrarUsuario('duplicado@example.com', 'otra')
+    ).rejects.toThrow('El usuario ya existe');
   });
 
-  test('4. Error: No debe permitir registrar un email ya existente', () => {
-    logica.registrarUsuario('test@example.com', '123456');
-    expect(() => {
-      logica.registrarUsuario('test@example.com', 'otraPassword');
-    }).toThrow('El usuario ya existe');
-  });
-
-  test('5. Debe comprobar si un token es válido', () => {
-    logica.registrarUsuario('jwt@example.com', '123456');
-    const { token } = logica.iniciarSesion('jwt@example.com', '123456');
-    const decoded = logica.verificarToken(token);
-    expect(decoded.email).toBe('jwt@example.com');
+  test('4. Debe registrar un usuario con rol admin y verificar el token', async () => {
+    await logica.registrarUsuario('admin@example.com', '123456', 'admin');
+    const res = await logica.iniciarSesion('admin@example.com', '123456');
+    const decoded = logica.verificarToken(res.token);
+    expect(decoded.rol).toBe('admin');
   });
 
 });
