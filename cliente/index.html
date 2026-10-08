@@ -3,119 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SaaS App - Sprint 1</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 40px; max-width: 500px; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; }
-    input { width: 100%; padding: 8px; box-sizing: border-box; }
-    button { padding: 10px 15px; cursor: pointer; }
-    .error { color: red; margin-top: 10px; }
-    .exito { color: green; margin-top: 10px; }
-    .oculto { display: none; }
-  </style>
+  <title>Acceso al Sistema - SaaS</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <h1>Aplicación SaaS - Sprint 1</h1>
-  <div id="mensaje"></div>
-
-  <!-- Vista: Invitado (Registro / Login) -->
-  <div id="vista-invitado">
-    <h2>Registro</h2>
-    <form id="form-registro">
-      <div class="form-group">
-        <label>Email:</label>
-        <input type="email" id="reg-email" required>
+  <main class="card">
+    
+    <!-- Contenedor del Formulario (Login / Registro) -->
+    <div id="auth-container">
+      <div class="brand">
+        <h2>Bienvenido</h2>
+        <p>Inicia sesión o crea una cuenta para continuar</p>
       </div>
-      <div class="form-group">
-        <label>Contraseña:</label>
-        <input type="password" id="reg-password" required>
-      </div>
-      <button type="submit">Registrarse</button>
-    </form>
 
-    <hr>
-
-    <h2>Iniciar Sesión</h2>
-    <form id="form-login">
-      <div class="form-group">
-        <label>Email:</label>
-        <input type="email" id="login-email" required>
+      <!-- Pestañas para alternar entre Login y Registro -->
+      <div class="tabs">
+        <button id="tab-login" class="tab-btn active" onclick="mostrarFormulario('login')">Iniciar Sesión</button>
+        <button id="tab-registro" class="tab-btn" onclick="mostrarFormulario('registro')">Crear Cuenta</button>
       </div>
-      <div class="form-group">
-        <label>Contraseña:</label>
-        <input type="password" id="login-password" required>
-      </div>
-      <button type="submit">Entrar</button>
-    </form>
-  </div>
 
-  <!-- Vista: Autenticado -->
-  <div id="vista-usuario" class="oculto">
-    <h2>Bienvenido, <span id="user-email"></span></h2>
-    <p>Estado de la sesión: <strong>Autenticado</strong></p>
-    <button id="btn-logout">Cerrar Sesión</button>
-  </div>
+      <div id="mensaje" class="alert"></div>
+
+      <!-- Formulario de Login -->
+      <form id="form-login" class="form-panel active">
+        <div class="form-group">
+          <label for="login-email">Correo electrónico</label>
+          <input type="email" id="login-email" placeholder="usuario@ejemplo.com" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Contraseña</label>
+          <input type="password" id="login-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Entrar</button>
+      </form>
+
+      <!-- Formulario de Registro -->
+      <form id="form-registro" class="form-panel">
+        <div class="form-group">
+          <label for="reg-email">Correo electrónico</label>
+          <input type="email" id="reg-email" placeholder="usuario@ejemplo.com" required>
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Contraseña</label>
+          <input type="password" id="reg-password" placeholder="Contraseña" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Registrarse</button>
+      </form>
+    </div>
+
+    <!-- Panel de Sesión Iniciada -->
+    <div id="session-container" class="form-panel">
+      <div class="brand">
+        <h2>Panel de Usuario</h2>
+        <p id="user-info">Sesión activa</p>
+      </div>
+      <button id="btn-logout" class="btn btn-secondary">Cerrar Sesión</button>
+    </div>
+
+  </main>
 
   <script src="rest.js"></script>
   <script>
-    const msgDiv = document.getElementById('mensaje');
+    function mostrarFormulario(modo) {
+      const formLogin = document.getElementById('form-login');
+      const formRegistro = document.getElementById('form-registro');
+      const tabLogin = document.getElementById('tab-login');
+      const tabRegistro = document.getElementById('tab-registro');
+      const mensaje = document.getElementById('mensaje');
 
-    function mostrarMensaje(texto, esError = false) {
-      msgDiv.textContent = texto;
-      msgDiv.className = esError ? 'error' : 'exito';
-    }
+      mensaje.style.display = 'none';
+      mensaje.textContent = '';
 
-    async function actualizarInterfaz() {
-      const usuario = await REST.obtenerPerfil();
-      if (usuario) {
-        document.getElementById('vista-invitado').classList.add('oculto');
-        document.getElementById('vista-usuario').classList.remove('oculto');
-        document.getElementById('user-email').textContent = usuario.email;
+      if (modo === 'login') {
+        formLogin.classList.add('active');
+        formRegistro.classList.remove('active');
+        tabLogin.classList.add('active');
+        tabRegistro.classList.remove('active');
       } else {
-        document.getElementById('vista-invitado').classList.remove('oculto');
-        document.getElementById('vista-usuario').classList.add('oculto');
+        formRegistro.classList.add('active');
+        formLogin.classList.remove('active');
+        tabRegistro.classList.add('active');
+        tabLogin.classList.remove('active');
       }
     }
-
-    // Eventos
-    document.getElementById('form-registro').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      try {
-        await REST.registrar(
-          document.getElementById('reg-email').value,
-          document.getElementById('reg-password').value
-        );
-        mostrarMensaje('Usuario registrado con éxito. Ahora puedes iniciar sesión.');
-      } catch (err) {
-        mostrarMensaje(err.message, true);
-      }
-    });
-
-    document.getElementById('form-login').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      try {
-        await REST.login(
-          document.getElementById('login-email').value,
-          document.getElementById('login-password').value
-        );
-        mostrarMensaje('Sesión iniciada correctamente.');
-        actualizarInterfaz();
-      } catch (err) {
-        mostrarMensaje(err.message, true);
-      }
-    });
-
-    document.getElementById('btn-logout').addEventListener('submit', () => {});
-    document.getElementById('btn-logout').onclick = () => {
-      REST.cerrarSesion();
-      mostrarMensaje('Sesión cerrada.');
-      actualizarInterfaz();
-    };
-
-    // Comprobar sesión al cargar la página
-    actualizarInterfaz();
   </script>
 </body>
 </html>
