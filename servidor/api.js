@@ -1,6 +1,6 @@
 const express = require('express');
 const path = require('path');
-const morgan = require('morgan'); // <--- Importar Morgan
+const morgan = require('morgan');
 require('dotenv').config();
 const logica = require('./logica');
 
@@ -8,12 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(morgan('dev')); // <--- Registrar middleware de logs en formato 'dev'
-app.use(express.static(path.join(__dirname, '../cliente')));
-
-
-
-app.use(express.json());
+app.use(morgan('dev'));
 app.use(express.static(path.join(__dirname, '../cliente')));
 
 // Middleware de autenticación genérico
@@ -69,7 +64,7 @@ app.get('/api/usuarios/me', requerirAutenticacion, (req, res) => {
   res.json({ usuario: req.usuario });
 });
 
-// Ruta protegida SOLO para Administradores
+// Ruta protegida SOLO para Administradores (Devuelve todos los usuarios)
 app.get('/api/usuarios', requerirAutenticacion, requerirRol('admin'), async (req, res) => {
   try {
     const usuarios = await logica.listarUsuarios();

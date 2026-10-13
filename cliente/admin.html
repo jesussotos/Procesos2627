@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container" style="max-width: 800px; margin: 40px auto; padding: 20px; font-family: Arial, sans-serif;">
+    <h1>Panel de Administración</h1>
+    <p>Bienvenido, administrador. Aquí puedes ver la lista de todos los usuarios registrados en el sistema:</p>
+    
+    <div id="mensaje" style="display: none; padding: 10px; margin-bottom: 15px; border-radius: 5px;"></div>
+
+    <button id="btn-logout" style="background: #dc2626; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-bottom: 20px;">Cerrar Sesión</button>
+
+    <h2>Usuarios Registrados</h2>
+    <div id="lista-usuarios">
+      <p>Cargando usuarios...</p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('jwt_token');
+      const rol = localStorage.getItem('rol');
+      const mensajeDiv = document.getElementById('mensaje');
+      const contenedorUsuarios = document.getElementById('lista-usuarios');
+
+      // Seguridad en el cliente: si no hay token o no es admin, fuera
+      if (!token || rol !== 'admin') {
+        alert('Acceso no autorizado.');
+        window.location.href = '/index.html';
+        return;
+      }
+
+      // Botón de cerrar sesión
+      document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('rol');
+        window.location.href = '/index.html';
+      });
+
+      try {
+        // Petición al endpoint protegido que creamos en api.js
+        const res = await fetch('/api/usuarios', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (res.ok) {
+          const usuarios = await res.json();
+
+          if (usuarios.length === 0) {
+            contenedorUsuarios.innerHTML = '<p>No hay usuarios registrados todavía.</p>';
+            return;
+          }
+
+          // Pintamos la lista en una tabla limpia
+          let html = `
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+              <thead>
+                <tr style="background-color: #f3f4f6; text-align: left;">
+                  <th style="padding: 10px; border: 1px solid #d1d5db;">Email</th>
+                  <th style="padding: 10px; border: 1px solid #d1d5db;">Rol</th>
+                </tr>
+              </thead>
+              <tbody>
+          `;
+
+          usuarios.forEach(u => {
+            const colorRol = u.rol === 'admin' ? '#166534' : '#1e40af';
+            html += `
+              <tr>
+                <td style="padding: 10px; border: 1px solid #d1d5db;">${u.email}</td>
+                <td style="padding: 10px; border: 1px solid #d1d5db; color: ${colorRol}; font-weight: bold;">${u.rol}</td>
+              </tr>
+            `;
+          });
+
+          html += '</tbody></table>';
+          contenedorUsuarios.innerHTML = html;
+
+        } else {
+          const data = await res.json();
+          mensajeDiv.style.display = 'block';
+          mensajeDiv.style.backgroundColor = '#fef2f2';
+          mensajeDiv.style.color = '#dc2626';
+          mensajeDiv.textContent = data.error || 'Error al cargar los usuarios.';
+          contenedorUsuarios.innerHTML = '';
+        }
+      } catch (error) {
+        console.error('Error de conexión:', error);
+        contenedorUsuarios.innerHTML = '<p style="color: red;">Error al conectar con el servidor.</p>';
+      }
+    });
+  </script>
+</body>
+</html>
