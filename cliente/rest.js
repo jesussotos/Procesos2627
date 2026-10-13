@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Evento Iniciar Sesión
+  // Evento Iniciar Sesión
   if (formLogin) {
     formLogin.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -68,11 +69,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
 
         if (res.ok) {
+          // --- AQUÍ ESTÁ EL CAMBIO ---
           localStorage.setItem('jwt_token', data.token);
+          localStorage.setItem('rol', data.usuario.rol); // Guardamos el rol que viene del servidor
+
           mostrarMensaje('¡Inicio de sesión exitoso!', true);
+          
+          // Redirección automática según el rol
           setTimeout(() => {
-            verificarSesion();
+            if (data.usuario.rol === 'admin') {
+              window.location.href = '/admin.html'; // Te manda al panel de administrador
+            } else {
+              window.location.href = '/dashboard.html'; // Te manda a la vista normal
+            }
           }, 500);
+          // ---------------------------
+
         } else {
           mostrarMensaje(data.error || 'Credenciales incorrectas');
         }
