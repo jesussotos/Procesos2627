@@ -58,6 +58,16 @@ app.post('/api/usuarios/login', async (req, res) => {
   }
 });
 
+app.post('/api/prueba/dominio', (req, res) => {
+  try {
+    const { email } = req.body;
+    const permitido = logica.comprobarDominioPermitido(email);
+    res.json({ permitido });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // --- RUTAS PROTEGIDAS ---
 
 app.get('/api/usuarios/me', requerirAutenticacion, (req, res) => {

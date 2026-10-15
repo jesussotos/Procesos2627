@@ -8,30 +8,64 @@ describe('Pruebas unitarias de la capa de lógica con BD (Hito 3)', () => {
   });
 
   test('1. Debe registrar un usuario en la BD correctamente', async () => {
-    const usuario = await logica.registrarUsuario('test3@example.com', '123456');
-    expect(usuario.email).toBe('test3@example.com');
+    const usuario = await logica.registrarUsuario('test3@uclm.es', '123456');
+    expect(usuario.email).toBe('test3@uclm.es');
     expect(usuario.rol).toBe('usuario');
   });
 
   test('2. Debe iniciar sesión con credenciales válidas', async () => {
-    await logica.registrarUsuario('login3@example.com', '123456');
-    const res = await logica.iniciarSesion('login3@example.com', '123456');
+    await logica.registrarUsuario('login3@uclm.es', '123456');
+    const res = await logica.iniciarSesion('login3@uclm.es', '123456');
     expect(res.token).toBeDefined();
-    expect(res.usuario.email).toBe('login3@example.com');
+    expect(res.usuario.email).toBe('login3@uclm.es');
   });
 
   test('3. Error: No debe permitir registrar un email ya existente', async () => {
-    await logica.registrarUsuario('duplicado@example.com', '123456');
+    await logica.registrarUsuario('duplicado@uclm.es', '123456');
     await expect(
-      logica.registrarUsuario('duplicado@example.com', 'otra')
+      logica.registrarUsuario('duplicado@uclm.es', 'otra')
     ).rejects.toThrow('El usuario ya existe');
   });
 
   test('4. Debe registrar un usuario con rol admin y verificar el token', async () => {
-    await logica.registrarUsuario('admin@example.com', '123456', 'admin');
-    const res = await logica.iniciarSesion('admin@example.com', '123456');
+    await logica.registrarUsuario('admin@uclm.es', '123456', 'admin');
+    const res = await logica.iniciarSesion('admin@uclm.es', '123456');
     const decoded = logica.verificarToken(res.token);
     expect(decoded.rol).toBe('admin');
   });
 
+});
+
+describe('Variante 3: dominios permitidos por configuración', () => {
+  const allowedDomainsOriginal = process.env.ALLOWED_DOMAINS;
+
+  beforeEach(() => {
+    process.env.ALLOWED_DOMAINS = 'uclm.es, alu.uclm.es';
+  });
+
+  afterAll(() => {
+    if (allowedDomainsOriginal === undefined) {
+      delete process.env.ALLOWED_DOMAINS;
+    } else {
+      process.env.ALLOWED_DOMAINS = allowedDomainsOriginal;
+    }
+  });
+
+  test('variante3: permite un dominio configurado sin distinguir mayúsculas', () => {
+    expect(logica.comprobarDominioPermitido('ana@UCLM.ES')).toBe(true);
+  });
+
+  test('variante3: rechaza un subdominio no incluido en la configuración', () => {
+    expect(logica.comprobarDominioPermitido('x@sub.uclm.es')).toBe(false);
+  });
+
+  test('variante3: rechaza un email sin arroba', () => {
+    expect(() => logica.comprobarDominioPermitido('sin-dominio')).toThrow('@');
+  });
+
+  test('variante3: rechaza el registro con un dominio no permitido', async () => {
+    await expect(
+      logica.registrarUsuario('persona@gmail.com', '123456')
+    ).rejects.toThrow('El dominio del email no está permitido');
+  });
 });
