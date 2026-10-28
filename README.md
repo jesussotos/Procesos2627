@@ -43,6 +43,7 @@ Durante el **Sprint 1** se ha desarrollado la arquitectura base de la solución,
   - Hashing de contraseñas: `bcryptjs`
   - Autenticación: `jsonwebtoken` (JWT)
 - **Variables de entorno:** `dotenv`
+- **Correo de confirmación:** API HTTP de Brevo
 - **Auditoría / Logging:** `morgan`
 - **Testing:** [Jest](https://jestjs.io/)
 - **Integración Continua:** GitHub Actions
@@ -52,6 +53,10 @@ Durante el **Sprint 1** se ha desarrollado la arquitectura base de la solución,
 ## 🚀 Instalación y Configuración Local
 
 Sigue estos pasos para desplegar el proyecto localmente en tu entorno de desarrollo:
+
+Para RF-02 configura en el entorno las variables `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`,
+`BREVO_SENDER_NAME` y `APP_PUBLIC_URL`. No guardes sus valores en el repositorio.
+La confirmación usa `GET /api/usuarios/confirmar?token=...`.
 
 ### **1. Clonar el repositorio**
 ```bash

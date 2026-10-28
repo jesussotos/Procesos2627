@@ -10,6 +10,7 @@ timestamp: 2026-10-28
 - **API:** [servidor/api.js](../servidor/api.js). Express sirve los archivos estáticos, valida la autenticación y aplica el rol.
 - **Lógica:** [servidor/logica.js](../servidor/logica.js). Registro, inicio de sesión, bcrypt, JWT, dominios permitidos y alta automática del administrador.
 - **Datos:** [servidor/datos.js](../servidor/datos.js). Acceso asíncrono a SQLite; la base usada por defecto es `servidor/database.sqlite`.
+- **Correo:** [servidor/correo.js](../servidor/correo.js). Adaptador de la API HTTP de Brevo, creado en la composición y recibido por la lógica mediante inyección.
 
 ## Frontend
 
@@ -27,6 +28,6 @@ El navegador cruza la frontera mediante peticiones HTTP a `/api/...`. [servidor/
 | POST | `/api/usuarios/registro` | Cualquier cliente |
 | POST | `/api/usuarios/login` | Cualquier cliente |
 | POST | `/api/prueba/dominio` | Cualquier cliente |
+| GET | `/api/usuarios/confirmar?token=...` | Cualquier cliente con un token válido |
 | GET | `/api/usuarios/me` | Usuario con sesión válida |
 | GET | `/api/usuarios` | Administrador con sesión válida |
-

@@ -11,7 +11,6 @@ Por definir.
 
 ## Requisitos que pasan
 
-- **RF-02:** implementar y comprobar el envío y la confirmación de cuenta por correo.
 - **RF-04:** implementar y comprobar el inicio de sesión con OAuth.
 - **RF-08:** añadir y proteger la comprobación de actividad de un usuario.
 - **RF-09:** añadir y proteger la eliminación de usuarios.
@@ -23,4 +22,3 @@ Por definir.
 - **PRO-03:** implementar y comprobar el despliegue continuo.
 
 Las prioridades y el objetivo del sprint quedan: **TODO(alumno): indicar el objetivo del Sprint 2 según la especificación.**
-
