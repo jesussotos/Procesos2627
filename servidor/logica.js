@@ -1,11 +1,18 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const datos = require('./datos');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secreto_por_defecto_desarrollo';
 
-const logica = {
+const crearLogica = ({
+  datosRepositorio = datos,
+  servicioCorreo = null,
+  ahora = () => Date.now(),
+  appPublicUrl = process.env.APP_PUBLIC_URL || 'http://localhost:3000'
+} = {}) => {
+  const logica = {
   comprobarDominioPermitido: (email) => {
     if (typeof email !== 'string') {
       throw new Error('El email debe ser un texto');
@@ -31,30 +38,50 @@ const logica = {
       throw new Error('El dominio del email no está permitido');
     }
 
-    const existe = await datos.buscarPorEmail(email);
+    const existe = await datosRepositorio.buscarPorEmail(email);
     if (existe) {
       throw new Error('El usuario ya existe');
     }
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
+    const token = crypto.randomBytes(32).toString('hex');
+    const confirmationTokenHash = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+    const confirmationExpiresAt = ahora() + (24 * 60 * 60 * 1000);
 
     const nuevoUsuario = {
       email,
       password: passwordHash,
       rol,
-      confirmado: false
+      confirmado: false,
+      confirmationTokenHash,
+      confirmationExpiresAt
     };
 
-    const usuarioGuardado = await datos.guardar(nuevoUsuario);
+    const usuarioGuardado = await datosRepositorio.guardar(nuevoUsuario);
+    try {
+      if (servicioCorreo) {
+        const enlace = `${appPublicUrl.replace(/\/$/, '')}/api/usuarios/confirmar?token=${encodeURIComponent(token)}`;
+        await servicioCorreo.enviarConfirmacion({ destinatario: email, enlace });
+      }
+    } catch (error) {
+      await datosRepositorio.eliminarPorEmail(email);
+      throw error;
+    }
     return { email: usuarioGuardado.email, rol: usuarioGuardado.rol };
   },
 
   // Inicio de sesión asíncrono
   iniciarSesion: async (email, password) => {
-    const usuario = await datos.buscarPorEmail(email);
+    const usuario = await datosRepositorio.buscarPorEmail(email);
     if (!usuario) {
       throw new Error('Credenciales incorrectas');
+    }
+    if (!usuario.confirmado) {
+      throw new Error('La cuenta no está confirmada');
     }
 
     const passwordValida = await bcrypt.compare(password, usuario.password);
@@ -86,7 +113,19 @@ const logica = {
 
   // Listar usuarios (solo accesible por Administradores)
   listarUsuarios: async () => {
-    return await datos.obtenerTodos();
+    return await datosRepositorio.obtenerTodos();
+  },
+
+  confirmarCuenta: async (token) => {
+    if (typeof token !== 'string' || token.length === 0) {
+      throw new Error('Token de confirmación no válido');
+    }
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const confirmada = await datosRepositorio.consumirConfirmacion(tokenHash, ahora());
+    if (!confirmada) {
+      throw new Error('Token de confirmación no válido o caducado');
+    }
+    return { confirmado: true };
   },
 
   // Creación automática del admin usando variables de entorno para mayor seguridad
@@ -102,13 +141,13 @@ const logica = {
         return; // Si no hay contraseña configurada en el entorno, no hace nada
       }
 
-      const existe = await datos.buscarPorEmail(emailAdmin);
+      const existe = await datosRepositorio.buscarPorEmail(emailAdmin);
 
       if (!existe) {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(passwordEnTextoPlano, salt);
 
-        await datos.guardar({
+        await datosRepositorio.guardar({
           email: emailAdmin,
           password: passwordHash,
           rol: 'admin',
@@ -120,9 +159,12 @@ const logica = {
       console.error('Error al inicializar el administrador:', error.message);
     }
   }
+  };
+  return logica;
 };
 
-// Se ejecuta al arrancar el servidor
+const logica = crearLogica();
 logica.inicializarAdminPorDefecto();
 
+logica.crearLogica = crearLogica;
 module.exports = logica;
