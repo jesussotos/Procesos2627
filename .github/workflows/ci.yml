@@ -9,8 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      ALLOWED_DOMAINS: 'uclm.es,alu.uclm.es'
 
     steps:
       - name: Descargar el repositorio
