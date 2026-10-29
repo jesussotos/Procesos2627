@@ -4,7 +4,7 @@ Este bundle documenta el estado comprobable del repositorio en 2026-10-28. Los a
 
 ## Cronología
 
-- 2026-10-28 · RF-02 implementado: confirmación por Brevo, token de un solo uso con caducidad de 24 horas y 12 tests pasados.
+- 2026-10-29 · RF-02 configurado para Gmail SMTP, con token de un solo uso y caducidad de 24 horas.
 - 2026-10-28 · Se comprobó `main` limpio y se creó la rama `docs/okf-sprint1`.
 - 2026-10-28 · `npm test -- --runInBand` no se pudo ejecutar porque `jest` no está disponible en el entorno.
 - 2026-10-28 · `gh` no está disponible; PR y ejecuciones del CI quedan por verificar en GitHub.

@@ -1,5 +1,3 @@
-process.env.ALLOWED_DOMAINS = 'uclm.es, alu.uclm.es';
-
 const logicaModulo = require('../servidor/logica');
 const datos = require('../servidor/datos');
 
@@ -97,36 +95,9 @@ describe('Confirmación de cuenta por correo', () => {
   });
 });
 
-describe('Variante 3: dominios permitidos por configuración', () => {
-  const allowedDomainsOriginal = process.env.ALLOWED_DOMAINS;
-
-  beforeEach(() => {
-    process.env.ALLOWED_DOMAINS = 'uclm.es, alu.uclm.es';
-  });
-
-  afterAll(() => {
-    if (allowedDomainsOriginal === undefined) {
-      delete process.env.ALLOWED_DOMAINS;
-    } else {
-      process.env.ALLOWED_DOMAINS = allowedDomainsOriginal;
-    }
-  });
-
-  test('variante3: permite un dominio configurado sin distinguir mayúsculas', () => {
-    expect(logica.comprobarDominioPermitido('ana@UCLM.ES')).toBe(true);
-  });
-
-  test('variante3: rechaza un subdominio no incluido en la configuración', () => {
-    expect(logica.comprobarDominioPermitido('x@sub.uclm.es')).toBe(false);
-  });
-
-  test('variante3: rechaza un email sin arroba', () => {
-    expect(() => logica.comprobarDominioPermitido('sin-dominio')).toThrow('@');
-  });
-
-  test('variante3: rechaza el registro con un dominio no permitido', async () => {
-    await expect(
-      logica.registrarUsuario('persona@gmail.com', '123456')
-    ).rejects.toThrow('El dominio del email no está permitido');
+describe('Registro sin restricción de dominio', () => {
+  test('permite registrar un email de cualquier dominio', async () => {
+    const usuario = await logica.registrarUsuario('persona@gmail.com', '123456');
+    expect(usuario.email).toBe('persona@gmail.com');
   });
 });

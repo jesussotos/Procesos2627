@@ -13,31 +13,8 @@ const crearLogica = ({
   appPublicUrl = process.env.APP_PUBLIC_URL || 'http://localhost:3000'
 } = {}) => {
   const logica = {
-  comprobarDominioPermitido: (email) => {
-    if (typeof email !== 'string') {
-      throw new Error('El email debe ser un texto');
-    }
-
-    const separador = email.lastIndexOf('@');
-    if (separador === -1) {
-      throw new Error('El email debe contener @');
-    }
-
-    const dominio = email.slice(separador + 1).toLowerCase();
-    const dominiosPermitidos = (process.env.ALLOWED_DOMAINS || '')
-      .split(',')
-      .map((dominioPermitido) => dominioPermitido.trim().toLowerCase())
-      .filter(Boolean);
-
-    return dominiosPermitidos.includes(dominio);
-  },
-
   // Registro asíncrono
   registrarUsuario: async (email, password, rol = 'usuario') => {
-    if (!logica.comprobarDominioPermitido(email)) {
-      throw new Error('El dominio del email no está permitido');
-    }
-
     const existe = await datosRepositorio.buscarPorEmail(email);
     if (existe) {
       throw new Error('El usuario ya existe');

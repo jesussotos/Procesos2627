@@ -29,21 +29,15 @@ timestamp: 2026-10-28
 - **Por qué:** El README y [servidor/api.js](../servidor/api.js) muestran el middleware de rol.
 - **Estado:** vigente.
 
-## D-05: Configurar dominios permitidos
-
-- **Qué se decidió:** Leer los dominios permitidos desde `ALLOWED_DOMAINS`.
-- **Por qué:** El commit `c2b7fea` se titula “variante 3 implementada” y el código lo implementa.
-- **Estado:** vigente.
-
-## D-06: Alta automática del administrador
+## D-05: Alta automática del administrador
 
 - **Qué se decidió:** Crear el administrador al arrancar si está configurado `ADMIN_PASSWORD`.
 - **Por qué:** El commit `8718f29` y [servidor/logica.js](../servidor/logica.js) lo documentan.
 - **Estado:** vigente.
 
-## D-07: Confirmación de cuenta mediante Brevo
+## D-06: Confirmación de cuenta mediante Gmail SMTP
 
-- **Qué se decidió:** Enviar el correo de confirmación mediante la API HTTP de Brevo. La confirmación se realizará con `GET /api/usuarios/confirmar?token=...`; el token será de un solo uso y caducará a las 24 horas.
+- **Qué se decidió:** Enviar el correo de confirmación mediante Gmail SMTP. La confirmación se realizará con `GET /api/usuarios/confirmar?token=...`; el token será de un solo uso y caducará a las 24 horas.
 - **Por qué:** TODO(alumno).
 - **Estado:** vigente.
 

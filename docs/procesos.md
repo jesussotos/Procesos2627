@@ -13,7 +13,7 @@ El historial muestra ramas de funcionalidad y commits de merge con mensajes de p
 
  [.github/workflows/ci.yml](../.github/workflows/ci.yml) se activa en `push` y `pull_request` hacia `main`. Usa Ubuntu, Node.js 20, `npm ci` y `npm test`. No se pudieron consultar ejecuciones porque `gh` no está disponible.
 
-La integración con Brevo se crea en la composición del backend y se inyecta en la lógica. Las pruebas usan un doble del servicio y no realizan llamadas reales.
+La integración con Gmail SMTP se crea en la composición del backend y se inyecta en la lógica. Las pruebas usan un doble del servicio y no realizan llamadas reales.
 
 ## Despliegue continuo
 
