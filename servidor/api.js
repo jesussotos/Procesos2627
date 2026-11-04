@@ -3,9 +3,9 @@ const path = require('path');
 const morgan = require('morgan');
 require('dotenv').config();
 const logicaModulo = require('./logica');
-const { crearServicioCorreoGmail } = require('./correo');
+const { crearServicioCorreoBrevo } = require('./correo');
 const logica = logicaModulo.crearLogica({
-  servicioCorreo: crearServicioCorreoGmail()
+  servicioCorreo: crearServicioCorreoBrevo()
 });
 
 const app = express();
@@ -66,6 +66,16 @@ app.get('/api/usuarios/confirmar', async (req, res) => {
   try {
     await logica.confirmarCuenta(req.query.token);
     res.json({ confirmado: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/prueba/dominio', (req, res) => {
+  try {
+    const { email } = req.body;
+    const permitido = logica.comprobarDominioPermitido(email);
+    res.json({ permitido });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
