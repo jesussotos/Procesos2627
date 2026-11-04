@@ -1,13 +1,27 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const datos = require('./datos');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secreto_por_defecto_desarrollo';
+const VALIDEZ_TOKEN_CONFIRMACION_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+// Adaptador de correo inyectado desde la composición (api.js) o desde las pruebas.
+// Debe ofrecer: enviarConfirmacion(email, token)
+let correo = null;
 
 const logica = {
-  // Registro asíncrono
+  configurarCorreo: (adaptador) => {
+    correo = adaptador;
+  },
+
+  // Registro asíncrono: la cuenta queda pendiente hasta confirmar el correo
   registrarUsuario: async (email, password, rol = 'usuario') => {
+    if (!correo) {
+      throw new Error('El servicio de correo no está configurado');
+    }
+
     const existe = await datos.buscarPorEmail(email);
     if (existe) {
       throw new Error('El usuario ya existe');
@@ -15,16 +29,49 @@ const logica = {
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
+    const tokenConfirmacion = crypto.randomBytes(32).toString('hex');
 
     const nuevoUsuario = {
       email,
       password: passwordHash,
       rol,
-      confirmado: false
+      confirmado: false,
+      tokenConfirmacion,
+      tokenExpira: Date.now() + VALIDEZ_TOKEN_CONFIRMACION_MS
     };
 
     const usuarioGuardado = await datos.guardar(nuevoUsuario);
-    return { email: usuarioGuardado.email, rol: usuarioGuardado.rol };
+
+    try {
+      await correo.enviarConfirmacion(email, tokenConfirmacion);
+    } catch (error) {
+      // Si el correo no sale, deshacemos el alta para que el usuario pueda volver a registrarse
+      await datos.eliminarPorEmail(email);
+      console.error(`[registro] Error enviando confirmación a ${email}:`, error.message);
+      throw new Error('No se pudo enviar el correo de confirmación. Inténtalo de nuevo más tarde');
+    }
+
+    console.log(`[registro] Usuario ${email} registrado, pendiente de confirmar`);
+    return { email: usuarioGuardado.email, rol: usuarioGuardado.rol, confirmado: false };
+  },
+
+  // Confirmación de cuenta a partir del token recibido por correo
+  confirmarCuenta: async (token) => {
+    if (!token) {
+      throw new Error('Falta el token de confirmación');
+    }
+
+    const usuario = await datos.buscarPorTokenConfirmacion(token);
+    if (!usuario) {
+      throw new Error('El enlace de confirmación no es válido o ya se ha usado');
+    }
+    if (usuario.token_expira && usuario.token_expira < Date.now()) {
+      throw new Error('El enlace de confirmación ha caducado');
+    }
+
+    await datos.confirmar(usuario.id);
+    console.log(`[confirmacion] Cuenta ${usuario.email} confirmada`);
+    return { email: usuario.email };
   },
 
   // Inicio de sesión asíncrono
@@ -37,6 +84,11 @@ const logica = {
     const passwordValida = await bcrypt.compare(password, usuario.password);
     if (!passwordValida) {
       throw new Error('Credenciales incorrectas');
+    }
+
+    // Se comprueba después de la contraseña para no revelar qué cuentas existen
+    if (!usuario.confirmado) {
+      throw new Error('Debes confirmar tu correo antes de iniciar sesión');
     }
 
     // Incluimos el rol en el token JWT

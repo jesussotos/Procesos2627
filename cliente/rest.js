@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
           tabRegistro.classList.remove('active');
           tabLogin.classList.add('active');
 
-          mostrarMensaje('¡Cuenta creada correctamente! Ya puedes iniciar sesión.', true);
+          mostrarMensaje(`Cuenta creada. Te hemos enviado un correo a ${email}: confirma tu cuenta antes de iniciar sesión.`, true);
         } else {
           mostrarMensaje(data.error || 'Error al registrar el usuario');
         }
@@ -140,6 +140,17 @@ document.addEventListener('DOMContentLoaded', () => {
       verificarSesion();
       mostrarMensaje('Has cerrado sesión correctamente', true);
     });
+  }
+
+  // Resultado de la confirmación por correo (el servidor redirige aquí con ?confirmacion=...)
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('confirmacion') === 'ok') {
+    mostrarMensaje('¡Cuenta confirmada! Ya puedes iniciar sesión.', true);
+  } else if (params.get('confirmacion') === 'error') {
+    mostrarMensaje(params.get('motivo') || 'No se pudo confirmar la cuenta');
+  }
+  if (params.has('confirmacion')) {
+    window.history.replaceState({}, '', window.location.pathname);
   }
 
   verificarSesion();

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi cuenta - SaaS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <main class="card">
+    <div class="brand">
+      <h2>Panel de Usuario</h2>
+      <p id="user-info">Comprobando sesión...</p>
+    </div>
+
+    <div id="mensaje" class="alert"></div>
+
+    <button id="btn-logout" class="btn btn-secondary">Cerrar Sesión</button>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('jwt_token');
+      const userInfo = document.getElementById('user-info');
+      const mensajeDiv = document.getElementById('mensaje');
+
+      function cerrarSesion() {
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('rol');
+        window.location.href = '/index.html';
+      }
+
+      document.getElementById('btn-logout').addEventListener('click', cerrarSesion);
+
+      // Sin token no hay sesión: vuelta al inicio
+      if (!token) {
+        window.location.href = '/index.html';
+        return;
+      }
+
+      // El servidor decide si la sesión sigue siendo válida
+      try {
+        const res = await fetch('/api/usuarios/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          userInfo.textContent = `Sesión iniciada como: ${data.usuario.email} (${data.usuario.rol})`;
+        } else {
+          // Token caducado o inválido
+          cerrarSesion();
+        }
+      } catch (error) {
+        mensajeDiv.style.display = 'block';
+        mensajeDiv.textContent = 'Error al conectar con el servidor';
+      }
+    });
+  </script>
+</body>
+</html>
