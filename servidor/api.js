@@ -3,9 +3,18 @@ const path = require('path');
 const morgan = require('morgan');
 require('dotenv').config();
 const logica = require('./logica');
+const { crearCorreoBrevo } = require('./correo');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Composición: se crea el adaptador de correo y se inyecta en la lógica
+logica.configurarCorreo(crearCorreoBrevo({
+  apiKey: process.env.BREVO_API_KEY,
+  remitente: process.env.MAIL_FROM,
+  nombreRemitente: process.env.MAIL_FROM_NAME,
+  urlBase: (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '')
+}));
 
 app.use(express.json());
 app.use(morgan('dev'));
@@ -58,6 +67,16 @@ app.post('/api/usuarios/login', async (req, res) => {
   }
 });
 
+// Enlace que llega por correo: confirma la cuenta y vuelve a la página de inicio con el resultado
+app.get('/api/usuarios/confirmar', async (req, res) => {
+  try {
+    await logica.confirmarCuenta(req.query.token);
+    res.redirect('/?confirmacion=ok');
+  } catch (error) {
+    res.redirect(`/?confirmacion=error&motivo=${encodeURIComponent(error.message)}`);
+  }
+});
+
 // --- RUTAS PROTEGIDAS ---
 
 app.get('/api/usuarios/me', requerirAutenticacion, (req, res) => {
@@ -78,4 +97,4 @@ app.listen(PORT, () => {
   console.log(`Servidor con SQLite corriendo en http://localhost:${PORT}`);
 });
 
-module.exports = app;
+module.exports = app;
