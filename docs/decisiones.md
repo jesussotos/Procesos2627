@@ -41,10 +41,5 @@ timestamp: 2026-10-28
 - **Por qué:** El commit `8718f29` y [servidor/logica.js](../servidor/logica.js) lo documentan.
 - **Estado:** vigente.
 
-## D-07: Confirmación de cuenta mediante Brevo
-
-- **Qué se decidió:** Enviar el correo de confirmación mediante la API HTTP de Brevo. La confirmación se realizará con `GET /api/usuarios/confirmar?token=...`; el token será de un solo uso y caducará a las 24 horas.
-- **Por qué:** TODO(alumno).
-- **Estado:** vigente.
-
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**
+

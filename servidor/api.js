@@ -2,11 +2,7 @@ const express = require('express');
 const path = require('path');
 const morgan = require('morgan');
 require('dotenv').config();
-const logicaModulo = require('./logica');
-const { crearServicioCorreoBrevo } = require('./correo');
-const logica = logicaModulo.crearLogica({
-  servicioCorreo: crearServicioCorreoBrevo()
-});
+const logica = require('./logica');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -59,15 +55,6 @@ app.post('/api/usuarios/login', async (req, res) => {
     res.json(resultado);
   } catch (error) {
     res.status(401).json({ error: error.message });
-  }
-});
-
-app.get('/api/usuarios/confirmar', async (req, res) => {
-  try {
-    await logica.confirmarCuenta(req.query.token);
-    res.json({ confirmado: true });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
   }
 });
 
