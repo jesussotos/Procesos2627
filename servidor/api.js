@@ -5,6 +5,12 @@ require('dotenv').config();
 const logica = require('./logica');
 const { crearCorreoBrevo } = require('./correo');
 
+// RNF-02: sin JWT_SECRET el servidor no arranca, para no funcionar nunca con un secreto inventado
+if (!process.env.JWT_SECRET) {
+  console.error('❌ Falta JWT_SECRET en las variables de entorno. El servidor no se inicia.');
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -94,7 +100,7 @@ app.get('/api/usuarios', requerirAutenticacion, requerirRol('admin'), async (req
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor con SQLite corriendo en http://localhost:${PORT}`);
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
 
 module.exports = app;

@@ -4,7 +4,15 @@ const crypto = require('crypto');
 const datos = require('./datos');
 require('dotenv').config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secreto_por_defecto_desarrollo';
+// RNF-02: el secreto JWT solo puede venir del entorno (.env en local, Secret Manager en Cloud Run).
+// No hay valor de respaldo: sin JWT_SECRET no se emite ni se verifica ningún token.
+function secretoJwt() {
+  const secreto = process.env.JWT_SECRET;
+  if (!secreto) {
+    throw new Error('Falta JWT_SECRET en las variables de entorno');
+  }
+  return secreto;
+}
 const VALIDEZ_TOKEN_CONFIRMACION_MS = 24 * 60 * 60 * 1000; // 24 horas
 
 // Adaptador de correo inyectado desde la composición (api.js) o desde las pruebas.
@@ -94,7 +102,7 @@ const logica = {
     // Incluimos el rol en el token JWT
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, rol: usuario.rol },
-      JWT_SECRET,
+      secretoJwt(),
       { expiresIn: '2h' }
     );
 
@@ -107,7 +115,7 @@ const logica = {
   // Verificación de token JWT
   verificarToken: (token) => {
     try {
-      return jwt.verify(token, JWT_SECRET);
+      return jwt.verify(token, secretoJwt());
     } catch (error) {
       throw new Error('Token inválido o expirado');
     }

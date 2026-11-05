@@ -2,7 +2,7 @@
 type: Sprint
 title: Sprint 1
 description: Hitos comprobados del Sprint 1 y retrospectiva basada en commits.
-timestamp: 2026-10-28
+timestamp: 2026-11-05
 ---
 
 ## Hito 1: backend y CI
@@ -35,7 +35,7 @@ timestamp: 2026-10-28
 
 - El historial de `main` contiene 8 commits de merge con mensaje de pull request: `#1`, `#2`, `#3`, `#4`, `#5`, `#6`, `#7` y `#9`; el recuento procede de `git log --first-parent` y no confirma el estado actual en GitHub.
 - No hay etiquetas comprobadas.
-- Hay 8 declaraciones `test` en el archivo de pruebas, recuento aproximado por grep; la ejecución falló por falta de `jest`.
+- Al cierre del Sprint 1 había 8 pruebas en `test/logica.test.js` (registro, inicio de sesión, duplicados, rol admin y confirmación por correo). El Sprint 2 añade la prueba 9 (RNF-02).
 
 ### Qué funcionó
 

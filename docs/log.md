@@ -1,9 +1,13 @@
 # Log del bundle
 
-Este bundle documenta el estado comprobable del repositorio en 2026-10-28. Los archivos enlazados desde este índice contienen la evidencia por tema.
+Este bundle documenta el estado comprobable del repositorio; la última actualización es del 2026-11-05. Los archivos enlazados desde este índice contienen la evidencia por tema.
 
 ## Cronología
 
+- 2026-11-05 · Rama `chore/cierre-pendientes-sprint1`: se elimina el secreto JWT de respaldo (RNF-02), se documentan la URL pública (RNF-05) y el despliegue continuo (PRO-03) y se corrige la documentación.
+- 2026-11-05 · `32b25cc` · persistencia en Turso con `@libsql/client` (RNF-09), rama `feat/persistencia-produccion`.
+- 2026-11-04 · `fbdf975` · merge de `#16`: confirmación de cuenta por correo con la API de Brevo (RF-02).
+- 2026-11-04 · `cfbd497` · merge de `#15`: se revierte la variante 3 (`0838925`).
 - 2026-10-28 · Se comprobó `main` limpio y se creó la rama `docs/okf-sprint1`.
 - 2026-10-28 · `npm test -- --runInBand` no se pudo ejecutar porque `jest` no está disponible en el entorno.
 - 2026-10-28 · `gh` no está disponible; PR y ejecuciones del CI quedan por verificar en GitHub.
@@ -25,4 +29,3 @@ Este bundle documenta el estado comprobable del repositorio en 2026-10-28. Los a
 - 2026-10-01 · `fb25650` · merge de `#1`, según el mensaje del commit.
 - 2026-10-01 · `e23e4cb` · README.
 - 2026-09-30 · `81cafd1` · commit inicial.
-
