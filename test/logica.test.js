@@ -1,3 +1,6 @@
+// La lógica exige JWT_SECRET (RNF-02). En el CI no hay .env, así que las pruebas usan uno propio.
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'secreto-solo-para-pruebas';
+
 const logica = require('../servidor/logica');
 const datos = require('../servidor/datos');
 
@@ -86,5 +89,18 @@ describe('Pruebas unitarias de la capa de lógica', () => {
       logica.registrarUsuario('sincorreo@example.com', '123456')
     ).rejects.toThrow('No se pudo enviar el correo de confirmación');
     expect(await datos.buscarPorEmail('sincorreo@example.com')).toBeNull();
+  });
+
+  test('9. Error: Sin JWT_SECRET no se emiten tokens (no hay secreto de respaldo)', async () => {
+    await registrarYConfirmar('sinsecreto@example.com', '123456');
+    const secreto = process.env.JWT_SECRET;
+    delete process.env.JWT_SECRET;
+    try {
+      await expect(
+        logica.iniciarSesion('sinsecreto@example.com', '123456')
+      ).rejects.toThrow('Falta JWT_SECRET');
+    } finally {
+      process.env.JWT_SECRET = secreto;
+    }
   });
 });
