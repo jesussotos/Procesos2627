@@ -1,6 +1,8 @@
 const { createClient } = require('@libsql/client');
 const path = require('path');
 require('dotenv').config();
+const { normalizar } = require('./normalizar');
+const { SECTORES_INICIALES, CIUDADES } = require('./catalogos');
 
 // Elige la base de datos según el entorno:
 // - Producción (Cloud Run) y local con Turso: TURSO_DATABASE_URL + TURSO_AUTH_TOKEN.
@@ -71,6 +73,47 @@ async function inicializar() {
 
   // El rol `usuario` del Sprint 1 se llama `profesional` desde el Sprint 2
   await db.execute("UPDATE usuarios SET rol = 'profesional' WHERE rol = 'usuario'");
+
+  // --- Catálogos (Sprint 2) ---
+  // nombre_normalizado guarda el nombre sin mayúsculas ni tildes: el índice UNIQUE aplica RN-05
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS sectores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      nombre_normalizado TEXT NOT NULL UNIQUE,
+      activo INTEGER NOT NULL DEFAULT 1
+    )
+  `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS ciudades (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      provincia TEXT NOT NULL,
+      nombre_normalizado TEXT NOT NULL,
+      UNIQUE (nombre, provincia)
+    )
+  `);
+
+  // Los sectores iniciales solo se cargan si la tabla está vacía, para respetar los cambios del administrador
+  const { rows } = await db.execute('SELECT COUNT(*) AS total FROM sectores');
+  if (Number(rows[0][0]) === 0) {
+    await insertarVarios('sectores', ['nombre', 'nombre_normalizado'],
+      SECTORES_INICIALES.map((nombre) => [nombre, normalizar(nombre)]));
+  }
+
+  // Las ciudades se insertan siempre con OR IGNORE: añadir una ciudad al catálogo solo requiere desplegar
+  await insertarVarios('ciudades', ['nombre', 'provincia', 'nombre_normalizado'],
+    CIUDADES.map(([nombre, provincia]) => [nombre, provincia, normalizar(nombre)]), 'INSERT OR IGNORE');
+}
+
+// Inserta muchas filas en una sola sentencia (una sola petición a Turso)
+async function insertarVarios(tabla, columnas, filas, verbo = 'INSERT') {
+  if (filas.length === 0) return;
+  const huecos = `(${columnas.map(() => '?').join(', ')})`;
+  await db.execute({
+    sql: `${verbo} INTO ${tabla} (${columnas.join(', ')}) VALUES ${filas.map(() => huecos).join(', ')}`,
+    args: filas.flat()
+  });
 }
 
 const listo = inicializar();
@@ -91,6 +134,11 @@ function aObjetos(resultado) {
 
 // Columnas que se devuelven de un usuario (la columna antigua `confirmado`, si existe, se ignora)
 const COLUMNAS = 'id, email, password, rol, estado, token_confirmacion, token_expira';
+
+function aSector(fila) {
+  if (!fila) return null;
+  return { id: fila.id, nombre: fila.nombre, activo: Boolean(fila.activo) };
+}
 
 async function buscarUno(sql, args) {
   const resultado = await consultar(sql, args);
@@ -164,7 +212,60 @@ module.exports = {
     return aObjetos(resultado);
   },
 
+  // --- Sectores ---
+
+  listarSectores: async (soloActivos) => {
+    const filtro = soloActivos ? 'WHERE activo = 1' : '';
+    const resultado = await consultar(`SELECT id, nombre, activo FROM sectores ${filtro} ORDER BY nombre`);
+    return aObjetos(resultado).map(aSector);
+  },
+
+  buscarSectorPorId: async (id) => {
+    return aSector(await buscarUno('SELECT id, nombre, activo FROM sectores WHERE id = ?', [id]));
+  },
+
+  buscarSectorPorNombreNormalizado: async (normalizado) => {
+    return aSector(await buscarUno('SELECT id, nombre, activo FROM sectores WHERE nombre_normalizado = ?', [normalizado]));
+  },
+
+  crearSector: async ({ nombre, normalizado }) => {
+    const resultado = await consultar(
+      'INSERT INTO sectores (nombre, nombre_normalizado) VALUES (?, ?)',
+      [nombre, normalizado]
+    );
+    return { id: Number(resultado.lastInsertRowid), nombre, activo: true };
+  },
+
+  renombrarSector: async (id, { nombre, normalizado }) => {
+    await consultar('UPDATE sectores SET nombre = ?, nombre_normalizado = ? WHERE id = ?', [nombre, normalizado, id]);
+  },
+
+  cambiarActivoSector: async (id, activo) => {
+    await consultar('UPDATE sectores SET activo = ? WHERE id = ?', [activo ? 1 : 0, id]);
+  },
+
+  // --- Ciudades ---
+
+  // Busca por nombre normalizado; primero las que empiezan por el texto, luego las que lo contienen
+  buscarCiudades: async (textoNormalizado, limite) => {
+    const escapado = textoNormalizado.replace(/[\\%_]/g, (c) => '\\' + c);
+    const resultado = await consultar(
+      `SELECT id, nombre, provincia FROM ciudades
+       WHERE nombre_normalizado LIKE ? ESCAPE '\\'
+       ORDER BY CASE WHEN nombre_normalizado LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, nombre
+       LIMIT ?`,
+      [`%${escapado}%`, `${escapado}%`, limite]
+    );
+    return aObjetos(resultado);
+  },
+
+  buscarCiudadPorId: async (id) => {
+    return buscarUno('SELECT id, nombre, provincia FROM ciudades WHERE id = ?', [id]);
+  },
+
+  // Solo para las pruebas: vacía usuarios y sectores (las ciudades son un catálogo fijo)
   limpiar: async () => {
     await consultar('DELETE FROM usuarios');
+    await consultar('DELETE FROM sectores');
   }
 };

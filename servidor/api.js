@@ -45,7 +45,7 @@ const requerirAutenticacion = async (req, res, next) => {
 function leerId(req, res) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
-    res.status(400).json({ error: 'Identificador de usuario no válido' });
+    res.status(400).json({ error: 'Identificador no válido' });
     return null;
   }
   return id;
@@ -138,6 +138,64 @@ app.delete('/api/usuarios/:id', requerirAutenticacion, async (req, res) => {
     res.json(await logica.eliminarUsuario(req.usuario, id));
   } catch (error) {
     res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+// --- SECTORES ---
+
+// RF-17: sectores activos (público, sin sesión)
+app.get('/api/sectores', async (req, res) => {
+  try {
+    res.json(await logica.listarSectores());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// RF-22: todos los sectores, también los desactivados (solo administrador)
+app.get('/api/sectores/todos', requerirAutenticacion, requerirRol('admin'), async (req, res) => {
+  try {
+    res.json(await logica.listarSectores({ incluirInactivos: true }));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// RF-22: crear un sector
+app.post('/api/sectores', requerirAutenticacion, requerirRol('admin'), async (req, res) => {
+  try {
+    res.status(201).json(await logica.crearSector(req.body.nombre));
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+// RF-22: renombrar y/o activar o desactivar un sector. Cuerpo: { nombre?, activo? }
+app.patch('/api/sectores/:id', requerirAutenticacion, requerirRol('admin'), async (req, res) => {
+  const id = leerId(req, res);
+  if (id === null) return;
+  try {
+    const { nombre, activo } = req.body;
+    if (nombre === undefined && activo === undefined) {
+      return res.status(400).json({ error: 'Indica el nombre nuevo o el estado activo' });
+    }
+    let sector;
+    if (nombre !== undefined) sector = await logica.renombrarSector(id, nombre);
+    if (activo !== undefined) sector = await logica.cambiarEstadoSector(id, activo);
+    res.json(sector);
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+// --- CIUDADES ---
+
+// Autocompletado del catálogo de ciudades (público): /api/ciudades?q=texto
+app.get('/api/ciudades', async (req, res) => {
+  try {
+    res.json(await logica.buscarCiudades(req.query.q));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

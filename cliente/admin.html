@@ -19,6 +19,17 @@
     <div id="lista-usuarios">
       <p>Cargando usuarios...</p>
     </div>
+
+    <h2 style="margin-top: 32px;">Sectores</h2>
+    <p>Catálogo de oficios que pueden elegir los profesionales. Un sector desactivado deja de verse en el buscador y en los formularios, pero no se borra.</p>
+    <form id="form-sector" style="display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap;">
+      <input id="nuevo-sector" type="text" maxlength="50" placeholder="Nombre del nuevo sector" required
+        style="flex: 1; min-width: 180px; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 5px;">
+      <button type="submit" style="background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 5px; cursor: pointer;">Añadir sector</button>
+    </form>
+    <div id="lista-sectores">
+      <p>Cargando sectores...</p>
+    </div>
   </div>
 
   <script>
@@ -49,8 +60,13 @@
         mensajeDiv.style.color = esExito ? '#166534' : '#dc2626';
       }
 
-      async function peticion(metodo, ruta) {
-        const res = await fetch(ruta, { method: metodo, headers: { 'Authorization': `Bearer ${token}` } });
+      async function peticion(metodo, ruta, cuerpo) {
+        const opciones = { method: metodo, headers: { 'Authorization': `Bearer ${token}` } };
+        if (cuerpo !== undefined) {
+          opciones.headers['Content-Type'] = 'application/json';
+          opciones.body = JSON.stringify(cuerpo);
+        }
+        const res = await fetch(ruta, opciones);
         const data = await res.json();
         if (res.status === 401) {
           // La sesión ha caducado o la cuenta ya no está activa
@@ -154,7 +170,86 @@
         }
       }
 
+      // --- Sectores (RF-22) ---
+      const contenedorSectores = document.getElementById('lista-sectores');
+      const formSector = document.getElementById('form-sector');
+      const inputSector = document.getElementById('nuevo-sector');
+
+      formSector.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          const sector = await peticion('POST', '/api/sectores', { nombre: inputSector.value });
+          mostrarMensaje(`Sector «${sector.nombre}» creado`, true);
+          formSector.reset();
+          await cargarSectores();
+        } catch (error) {
+          mostrarMensaje(error.message);
+        }
+      });
+
+      async function renombrarSector(s) {
+        const nombre = prompt(`Nuevo nombre para «${s.nombre}»:`, s.nombre);
+        if (nombre === null || nombre.trim() === s.nombre) return;
+        try {
+          const actualizado = await peticion('PATCH', `/api/sectores/${s.id}`, { nombre });
+          mostrarMensaje(`Sector renombrado a «${actualizado.nombre}»`, true);
+          await cargarSectores();
+        } catch (error) {
+          mostrarMensaje(error.message);
+        }
+      }
+
+      async function cambiarEstadoSector(s) {
+        try {
+          await peticion('PATCH', `/api/sectores/${s.id}`, { activo: !s.activo });
+          mostrarMensaje(`Sector «${s.nombre}» ${s.activo ? 'desactivado' : 'activado'}`, true);
+          await cargarSectores();
+        } catch (error) {
+          mostrarMensaje(error.message);
+        }
+      }
+
+      async function cargarSectores() {
+        try {
+          const sectores = await peticion('GET', '/api/sectores/todos');
+          if (sectores.length === 0) {
+            contenedorSectores.innerHTML = '<p>No hay sectores todavía.</p>';
+            return;
+          }
+          const tabla = document.createElement('table');
+          tabla.style.cssText = 'width: 100%; border-collapse: collapse; margin-top: 10px;';
+          tabla.innerHTML = `
+            <thead>
+              <tr style="background-color: #f3f4f6; text-align: left;">
+                <th style="${ESTILO_CELDA}">Sector</th>
+                <th style="${ESTILO_CELDA}">Estado</th>
+                <th style="${ESTILO_CELDA}">Acciones</th>
+              </tr>
+            </thead>`;
+          const cuerpo = document.createElement('tbody');
+          sectores.forEach(s => {
+            const fila = document.createElement('tr');
+            fila.appendChild(celda(s.nombre, s.activo ? '' : 'color: #6b7280;'));
+            fila.appendChild(celda(s.activo ? 'activo' : 'desactivado',
+              `color: ${s.activo ? '#166534' : '#6b7280'}; font-weight: bold;`));
+            const acciones = celda('');
+            acciones.appendChild(boton('Renombrar', '#2563eb', () => renombrarSector(s)));
+            acciones.appendChild(s.activo
+              ? boton('Desactivar', '#dc2626', () => cambiarEstadoSector(s))
+              : boton('Activar', '#166534', () => cambiarEstadoSector(s)));
+            fila.appendChild(acciones);
+            cuerpo.appendChild(fila);
+          });
+          tabla.appendChild(cuerpo);
+          contenedorSectores.replaceChildren(tabla);
+        } catch (error) {
+          mostrarMensaje(error.message);
+          contenedorSectores.innerHTML = '';
+        }
+      }
+
       cargarUsuarios();
+      cargarSectores();
     });
   </script>
 </body>
