@@ -2,7 +2,7 @@
 type: Decisiones
 title: Decisiones de diseño
 description: Decisiones visibles en el código, el README y el historial.
-timestamp: 2026-11-05
+timestamp: 2026-11-06
 ---
 
 ## D-01: Separar API, lógica y datos
@@ -59,6 +59,19 @@ Las decisiones D-07 a D-13 del dominio del Sprint 2 están en la especificación
 
 - **Qué se decidió:** Eliminar el valor por defecto de `JWT_SECRET`; el servidor no arranca sin él.
 - **Por qué:** Un secreto escrito en el código es público en el repositorio y permitiría falsificar tokens si faltara la variable en producción (RNF-02).
+- **Estado:** vigente.
+
+## D-17: Reactivar las cuentas eliminadas al volver a registrarse
+
+- **Qué se decidió:** Si alguien se registra con el email de una cuenta eliminada, se reutiliza esa misma fila: contraseña nueva, rol `profesional`, estado `pendiente` y nuevo correo de confirmación (RN-11). Cualquier cuenta eliminada se puede reactivar, la haya eliminado su dueño o el administrador.
+- **Por qué:** El borrado lógico (D-13) deja el email ocupado; sin reactivación, quien elimina su cuenta no podría volver con su correo. Reutilizar la fila conserva la trazabilidad y facilita las pruebas manuales sin crear cuentas de correo nuevas.
+- **Consecuencia:** Eliminar una cuenta no impide que su dueño vuelva; el administrador no tiene un mecanismo de bloqueo permanente.
+- **Estado:** vigente.
+
+## D-18: Comprobar la sesión contra la base de datos en cada petición
+
+- **Qué se decidió:** El middleware de autenticación, además de verificar el JWT, comprueba que la cuenta sigue activa y toma el rol de la base de datos.
+- **Por qué:** RN-08 exige que un usuario eliminado deje de poder usar la aplicación; un JWT seguiría siendo válido hasta caducar (2 h). El coste es una consulta por petición protegida.
 - **Estado:** vigente.
 
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**

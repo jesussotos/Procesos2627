@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container" style="max-width: 800px; margin: 40px auto; padding: 20px; font-family: Arial, sans-serif;">
+  <div class="container" style="max-width: 900px; margin: 40px auto; padding: 20px; font-family: Arial, sans-serif;">
     <h1>Panel de Administración</h1>
     <p>Bienvenido, administrador. Aquí puedes ver la lista de todos los usuarios registrados en el sistema:</p>
     
@@ -42,59 +42,119 @@
         window.location.href = '/index.html';
       });
 
-      try {
-        // Petición al endpoint protegido que creamos en api.js
-        const res = await fetch('/api/usuarios', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+      function mostrarMensaje(texto, esExito = false) {
+        mensajeDiv.style.display = 'block';
+        mensajeDiv.textContent = texto;
+        mensajeDiv.style.backgroundColor = esExito ? '#f0fdf4' : '#fef2f2';
+        mensajeDiv.style.color = esExito ? '#166534' : '#dc2626';
+      }
 
-        if (res.ok) {
-          const usuarios = await res.json();
+      async function peticion(metodo, ruta) {
+        const res = await fetch(ruta, { method: metodo, headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (res.status === 401) {
+          // La sesión ha caducado o la cuenta ya no está activa
+          localStorage.removeItem('jwt_token');
+          localStorage.removeItem('rol');
+          window.location.href = '/index.html';
+        }
+        if (!res.ok) throw new Error(data.error || 'Error en la petición');
+        return data;
+      }
+
+      const COLORES_ESTADO = { activo: '#166534', pendiente: '#92400e', eliminado: '#6b7280' };
+      const ESTILO_CELDA = 'padding: 10px; border: 1px solid #d1d5db;';
+      const ESTILO_BOTON = 'border: none; padding: 6px 10px; border-radius: 5px; cursor: pointer; margin: 2px; color: white;';
+
+      function celda(texto, estiloExtra = '') {
+        const td = document.createElement('td');
+        td.style.cssText = ESTILO_CELDA + estiloExtra;
+        td.textContent = texto; // textContent: nunca se interpreta como HTML
+        return td;
+      }
+
+      function boton(texto, color, alPulsar) {
+        const b = document.createElement('button');
+        b.textContent = texto;
+        b.style.cssText = ESTILO_BOTON + `background: ${color};`;
+        b.addEventListener('click', alPulsar);
+        return b;
+      }
+
+      // RF-08: pregunta al servidor si el usuario está activo
+      async function comprobarActivo(u) {
+        try {
+          const r = await peticion('GET', `/api/usuarios/${u.id}/activo`);
+          mostrarMensaje(`${r.email}: ${r.activo ? 'está activo' : `no está activo (estado: ${r.estado})`}`, r.activo);
+        } catch (error) {
+          mostrarMensaje(error.message);
+        }
+      }
+
+      // RF-09: borrado lógico de un usuario
+      async function eliminar(u) {
+        if (!confirm(`¿Eliminar la cuenta ${u.email}? No podrá iniciar sesión hasta que vuelva a registrarse.`)) return;
+        try {
+          await peticion('DELETE', `/api/usuarios/${u.id}`);
+          mostrarMensaje(`Cuenta ${u.email} eliminada`, true);
+          await cargarUsuarios();
+        } catch (error) {
+          mostrarMensaje(error.message);
+        }
+      }
+
+      async function cargarUsuarios() {
+        try {
+          const [yo, usuarios] = await Promise.all([
+            peticion('GET', '/api/usuarios/me'),
+            peticion('GET', '/api/usuarios')
+          ]);
 
           if (usuarios.length === 0) {
             contenedorUsuarios.innerHTML = '<p>No hay usuarios registrados todavía.</p>';
             return;
           }
 
-          // Pintamos la lista en una tabla limpia
-          let html = `
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-              <thead>
-                <tr style="background-color: #f3f4f6; text-align: left;">
-                  <th style="padding: 10px; border: 1px solid #d1d5db;">Email</th>
-                  <th style="padding: 10px; border: 1px solid #d1d5db;">Rol</th>
-                </tr>
-              </thead>
-              <tbody>
-          `;
+          const tabla = document.createElement('table');
+          tabla.style.cssText = 'width: 100%; border-collapse: collapse; margin-top: 10px;';
+          tabla.innerHTML = `
+            <thead>
+              <tr style="background-color: #f3f4f6; text-align: left;">
+                <th style="${ESTILO_CELDA}">Email</th>
+                <th style="${ESTILO_CELDA}">Rol</th>
+                <th style="${ESTILO_CELDA}">Estado</th>
+                <th style="${ESTILO_CELDA}">Acciones</th>
+              </tr>
+            </thead>`;
+          const cuerpo = document.createElement('tbody');
 
           usuarios.forEach(u => {
+            const fila = document.createElement('tr');
             const colorRol = u.rol === 'admin' ? '#166534' : '#1e40af';
-            html += `
-              <tr>
-                <td style="padding: 10px; border: 1px solid #d1d5db;">${u.email}</td>
-                <td style="padding: 10px; border: 1px solid #d1d5db; color: ${colorRol}; font-weight: bold;">${u.rol}</td>
-              </tr>
-            `;
+            fila.appendChild(celda(u.email));
+            fila.appendChild(celda(u.rol, `color: ${colorRol}; font-weight: bold;`));
+            fila.appendChild(celda(u.estado, `color: ${COLORES_ESTADO[u.estado] || '#111827'}; font-weight: bold;`));
+
+            const acciones = celda('');
+            acciones.appendChild(boton('¿Activo?', '#2563eb', () => comprobarActivo(u)));
+            // El admin no puede eliminarse a sí mismo (RN-09) ni eliminar dos veces la misma cuenta
+            if (u.id !== yo.usuario.id && u.estado !== 'eliminado') {
+              acciones.appendChild(boton('Eliminar', '#dc2626', () => eliminar(u)));
+            }
+            fila.appendChild(acciones);
+            cuerpo.appendChild(fila);
           });
 
-          html += '</tbody></table>';
-          contenedorUsuarios.innerHTML = html;
-
-        } else {
-          const data = await res.json();
-          mensajeDiv.style.display = 'block';
-          mensajeDiv.style.backgroundColor = '#fef2f2';
-          mensajeDiv.style.color = '#dc2626';
-          mensajeDiv.textContent = data.error || 'Error al cargar los usuarios.';
+          tabla.appendChild(cuerpo);
+          contenedorUsuarios.replaceChildren(tabla);
+        } catch (error) {
+          console.error('Error al cargar usuarios:', error);
+          mostrarMensaje(error.message || 'Error al conectar con el servidor.');
           contenedorUsuarios.innerHTML = '';
         }
-      } catch (error) {
-        console.error('Error de conexión:', error);
-        contenedorUsuarios.innerHTML = '<p style="color: red;">Error al conectar con el servidor.</p>';
       }
+
+      cargarUsuarios();
     });
   </script>
 </body>

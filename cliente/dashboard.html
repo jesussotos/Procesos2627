@@ -17,6 +17,7 @@
     <div id="mensaje" class="alert"></div>
 
     <button id="btn-logout" class="btn btn-secondary">Cerrar Sesión</button>
+    <button id="btn-eliminar" class="btn btn-secondary" style="margin-top: 12px; color: #dc2626; border-color: #fecaca;">Eliminar mi cuenta</button>
   </main>
 
   <script>
@@ -32,6 +33,25 @@
       }
 
       document.getElementById('btn-logout').addEventListener('click', cerrarSesion);
+
+      // RF-09: el profesional elimina su propia cuenta (borrado lógico)
+      document.getElementById('btn-eliminar').addEventListener('click', async () => {
+        if (!confirm('¿Seguro que quieres eliminar tu cuenta? Podrás volver a registrarte con el mismo correo.')) return;
+        try {
+          const res = await fetch('/api/usuarios/me', {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'No se pudo eliminar la cuenta');
+          localStorage.removeItem('jwt_token');
+          localStorage.removeItem('rol');
+          window.location.href = '/index.html?cuenta=eliminada';
+        } catch (error) {
+          mensajeDiv.style.display = 'block';
+          mensajeDiv.textContent = error.message;
+        }
+      });
 
       // Sin token no hay sesión: vuelta al inicio
       if (!token) {

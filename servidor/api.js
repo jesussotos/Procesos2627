@@ -26,20 +26,30 @@ app.use(express.json());
 app.use(morgan('dev'));
 app.use(express.static(path.join(__dirname, '../cliente')));
 
-// Middleware de autenticación genérico
-const requerirAutenticacion = (req, res, next) => {
+// Middleware de autenticación: token válido y cuenta todavía activa (RN-08)
+const requerirAutenticacion = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Acceso no autorizado' });
   }
   const token = authHeader.split(' ')[1];
   try {
-    req.usuario = logica.verificarToken(token);
+    req.usuario = await logica.comprobarSesion(token);
     next();
   } catch (error) {
     res.status(401).json({ error: error.message });
   }
 };
+
+// Convierte el :id de la ruta en número; responde 400 si no lo es
+function leerId(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: 'Identificador de usuario no válido' });
+    return null;
+  }
+  return id;
+}
 
 // Middleware para restringir por Rol (RBAC)
 const requerirRol = (rolRequerido) => {
@@ -55,8 +65,9 @@ const requerirRol = (rolRequerido) => {
 
 app.post('/api/usuarios/registro', async (req, res) => {
   try {
-    const { email, password, rol } = req.body;
-    const nuevoUsuario = await logica.registrarUsuario(email, password, rol);
+    // El rol no se acepta del cliente: quien se registra es siempre profesional
+    const { email, password } = req.body;
+    const nuevoUsuario = await logica.registrarUsuario(email, password);
     res.status(201).json(nuevoUsuario);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -96,6 +107,37 @@ app.get('/api/usuarios', requerirAutenticacion, requerirRol('admin'), async (req
     res.json(usuarios);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// RF-08: comprobar si un usuario está activo (solo administrador)
+app.get('/api/usuarios/:id/activo', requerirAutenticacion, requerirRol('admin'), async (req, res) => {
+  const id = leerId(req, res);
+  if (id === null) return;
+  try {
+    res.json(await logica.usuarioActivo(id));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+// RF-09: el usuario elimina su propia cuenta (va antes de /:id para que "me" no se lea como id)
+app.delete('/api/usuarios/me', requerirAutenticacion, async (req, res) => {
+  try {
+    res.json(await logica.eliminarUsuario(req.usuario, req.usuario.id));
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+// RF-09: eliminar un usuario. Los permisos (RN-09) los decide la lógica, no la ruta
+app.delete('/api/usuarios/:id', requerirAutenticacion, async (req, res) => {
+  const id = leerId(req, res);
+  if (id === null) return;
+  try {
+    res.json(await logica.eliminarUsuario(req.usuario, id));
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
   }
 });
 

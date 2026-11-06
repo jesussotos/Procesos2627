@@ -149,7 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
   } else if (params.get('confirmacion') === 'error') {
     mostrarMensaje(params.get('motivo') || 'No se pudo confirmar la cuenta');
   }
-  if (params.has('confirmacion')) {
+  if (params.get('cuenta') === 'eliminada') {
+    mostrarMensaje('Tu cuenta se ha eliminado. Puedes volver a registrarte con el mismo correo cuando quieras.', true);
+  }
+  if (params.has('confirmacion') || params.has('cuenta')) {
     window.history.replaceState({}, '', window.location.pathname);
   }
 
