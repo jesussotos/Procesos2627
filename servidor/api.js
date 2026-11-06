@@ -188,6 +188,80 @@ app.patch('/api/sectores/:id', requerirAutenticacion, requerirRol('admin'), asyn
   }
 });
 
+// --- PERFIL DEL PROFESIONAL ---
+// No hay :id en la ruta: cada profesional solo ve y edita el suyo (RN-02)
+
+app.get('/api/perfil', requerirAutenticacion, async (req, res) => {
+  try {
+    res.json(await logica.obtenerPerfil(req.usuario));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.put('/api/perfil', requerirAutenticacion, async (req, res) => {
+  try {
+    res.json(await logica.guardarPerfil(req.usuario, req.body));
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+// --- LOGO Y FOTOS DE TRABAJOS (RF-23) ---
+// El cuerpo de la petición es la imagen tal cual (Content-Type image/jpeg, image/png o image/webp)
+const leerImagen = express.raw({ type: 'image/*', limit: '1mb' });
+
+app.put('/api/perfil/logo', requerirAutenticacion, leerImagen, async (req, res) => {
+  try {
+    res.json(await logica.subirLogo(req.usuario, req.body));
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/perfil/logo', requerirAutenticacion, async (req, res) => {
+  try {
+    await logica.quitarLogo(req.usuario);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+app.post('/api/perfil/fotos', requerirAutenticacion, leerImagen, async (req, res) => {
+  try {
+    res.status(201).json(await logica.subirFoto(req.usuario, req.body));
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/perfil/fotos/:id', requerirAutenticacion, async (req, res) => {
+  const id = leerId(req, res);
+  if (id === null) return;
+  try {
+    await logica.quitarFoto(req.usuario, id);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+// Imagen pública (para la ficha); el id cambia si se sustituye, así que se puede guardar en caché
+app.get('/api/imagenes/:id', async (req, res) => {
+  const id = leerId(req, res);
+  if (id === null) return;
+  try {
+    const imagen = await logica.obtenerImagen(id);
+    res.set('Content-Type', imagen.mime);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.send(imagen.datos);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
 // --- CIUDADES ---
 
 // Autocompletado del catálogo de ciudades (público): /api/ciudades?q=texto
@@ -197,6 +271,17 @@ app.get('/api/ciudades', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// Errores de Express antes de llegar a las rutas (cuerpo demasiado grande, JSON mal formado...)
+app.use((error, req, res, next) => {
+  if (error.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'El archivo es demasiado grande' });
+  }
+  if (error.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'El cuerpo de la petición no es válido' });
+  }
+  next(error);
 });
 
 app.listen(PORT, () => {

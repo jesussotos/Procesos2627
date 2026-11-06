@@ -3,254 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel de Administración</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Administración · Oficios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&display=swap">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
-  <div class="container" style="max-width: 900px; margin: 40px auto; padding: 20px; font-family: Arial, sans-serif;">
-    <h1>Panel de Administración</h1>
-    <p>Bienvenido, administrador. Aquí puedes ver la lista de todos los usuarios registrados en el sistema:</p>
-    
-    <div id="mensaje" style="display: none; padding: 10px; margin-bottom: 15px; border-radius: 5px;"></div>
 
-    <button id="btn-logout" style="background: #dc2626; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-bottom: 20px;">Cerrar Sesión</button>
-
-    <h2>Usuarios Registrados</h2>
-    <div id="lista-usuarios">
-      <p>Cargando usuarios...</p>
+  <header class="barra">
+    <div class="contenedor">
+      <a class="marca" href="/admin.html">Oficios<small>Administración</small></a>
+      <div class="barra-sesion">
+        <span id="user-info"></span>
+        <button id="btn-logout" class="boton-texto" type="button">Cerrar sesión</button>
+      </div>
     </div>
+  </header>
 
-    <h2 style="margin-top: 32px;">Sectores</h2>
-    <p>Catálogo de oficios que pueden elegir los profesionales. Un sector desactivado deja de verse en el buscador y en los formularios, pero no se borra.</p>
-    <form id="form-sector" style="display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap;">
-      <input id="nuevo-sector" type="text" maxlength="50" placeholder="Nombre del nuevo sector" required
-        style="flex: 1; min-width: 180px; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 5px;">
-      <button type="submit" style="background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 5px; cursor: pointer;">Añadir sector</button>
-    </form>
-    <div id="lista-sectores">
-      <p>Cargando sectores...</p>
+  <section class="banda">
+    <div class="contenedor">
+      <div>
+        <h1 class="titulo">Administración</h1>
+        <p class="subtitulo">Cuentas de los profesionales y catálogo de sectores del directorio.</p>
+      </div>
+      <div class="admin-resumen">
+        <span><strong id="n-cuentas">–</strong><span id="t-cuentas">cuentas</span></span>
+        <span><strong id="n-activas">–</strong><span id="t-activas">activas</span></span>
+        <span><strong id="n-pendientes">–</strong><span id="t-pendientes">pendientes</span></span>
+        <span><strong id="n-sectores">–</strong><span id="t-sectores">sectores activos</span></span>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      const token = localStorage.getItem('jwt_token');
-      const rol = localStorage.getItem('rol');
-      const mensajeDiv = document.getElementById('mensaje');
-      const contenedorUsuarios = document.getElementById('lista-usuarios');
+  <main class="contenedor admin-cuerpo">
+    <div id="mensaje" class="alert" role="status" style="margin-bottom: 0;"></div>
 
-      // Seguridad en el cliente: si no hay token o no es admin, fuera
-      if (!token || rol !== 'admin') {
-        alert('Acceso no autorizado.');
-        window.location.href = '/index.html';
-        return;
-      }
+    <section class="panel">
+      <div class="panel-cabecera">
+        <h2>Usuarios</h2>
+        <p>Comprueba si una cuenta está activa o elimínala. Una cuenta eliminada puede volver a registrarse.</p>
+      </div>
+      <div id="lista-usuarios" class="tabla-envoltorio">
+        <p class="ayuda">Cargando usuarios...</p>
+      </div>
+    </section>
 
-      // Botón de cerrar sesión
-      document.getElementById('btn-logout').addEventListener('click', () => {
-        localStorage.removeItem('jwt_token');
-        localStorage.removeItem('rol');
-        window.location.href = '/index.html';
-      });
+    <section class="panel">
+      <div class="panel-cabecera">
+        <h2>Sectores</h2>
+        <p>Un sector desactivado deja de verse en el buscador y en los formularios, pero no se borra.</p>
+      </div>
+      <form id="form-sector" class="formulario-linea">
+        <input id="nuevo-sector" type="text" maxlength="50" placeholder="Nombre del nuevo sector" aria-label="Nombre del nuevo sector" required>
+        <button type="submit" class="btn btn-primary">Añadir sector</button>
+      </form>
+      <div id="lista-sectores" class="tabla-envoltorio">
+        <p class="ayuda">Cargando sectores...</p>
+      </div>
+    </section>
+  </main>
 
-      function mostrarMensaje(texto, esExito = false) {
-        mensajeDiv.style.display = 'block';
-        mensajeDiv.textContent = texto;
-        mensajeDiv.style.backgroundColor = esExito ? '#f0fdf4' : '#fef2f2';
-        mensajeDiv.style.color = esExito ? '#166534' : '#dc2626';
-      }
-
-      async function peticion(metodo, ruta, cuerpo) {
-        const opciones = { method: metodo, headers: { 'Authorization': `Bearer ${token}` } };
-        if (cuerpo !== undefined) {
-          opciones.headers['Content-Type'] = 'application/json';
-          opciones.body = JSON.stringify(cuerpo);
-        }
-        const res = await fetch(ruta, opciones);
-        const data = await res.json();
-        if (res.status === 401) {
-          // La sesión ha caducado o la cuenta ya no está activa
-          localStorage.removeItem('jwt_token');
-          localStorage.removeItem('rol');
-          window.location.href = '/index.html';
-        }
-        if (!res.ok) throw new Error(data.error || 'Error en la petición');
-        return data;
-      }
-
-      const COLORES_ESTADO = { activo: '#166534', pendiente: '#92400e', eliminado: '#6b7280' };
-      const ESTILO_CELDA = 'padding: 10px; border: 1px solid #d1d5db;';
-      const ESTILO_BOTON = 'border: none; padding: 6px 10px; border-radius: 5px; cursor: pointer; margin: 2px; color: white;';
-
-      function celda(texto, estiloExtra = '') {
-        const td = document.createElement('td');
-        td.style.cssText = ESTILO_CELDA + estiloExtra;
-        td.textContent = texto; // textContent: nunca se interpreta como HTML
-        return td;
-      }
-
-      function boton(texto, color, alPulsar) {
-        const b = document.createElement('button');
-        b.textContent = texto;
-        b.style.cssText = ESTILO_BOTON + `background: ${color};`;
-        b.addEventListener('click', alPulsar);
-        return b;
-      }
-
-      // RF-08: pregunta al servidor si el usuario está activo
-      async function comprobarActivo(u) {
-        try {
-          const r = await peticion('GET', `/api/usuarios/${u.id}/activo`);
-          mostrarMensaje(`${r.email}: ${r.activo ? 'está activo' : `no está activo (estado: ${r.estado})`}`, r.activo);
-        } catch (error) {
-          mostrarMensaje(error.message);
-        }
-      }
-
-      // RF-09: borrado lógico de un usuario
-      async function eliminar(u) {
-        if (!confirm(`¿Eliminar la cuenta ${u.email}? No podrá iniciar sesión hasta que vuelva a registrarse.`)) return;
-        try {
-          await peticion('DELETE', `/api/usuarios/${u.id}`);
-          mostrarMensaje(`Cuenta ${u.email} eliminada`, true);
-          await cargarUsuarios();
-        } catch (error) {
-          mostrarMensaje(error.message);
-        }
-      }
-
-      async function cargarUsuarios() {
-        try {
-          const [yo, usuarios] = await Promise.all([
-            peticion('GET', '/api/usuarios/me'),
-            peticion('GET', '/api/usuarios')
-          ]);
-
-          if (usuarios.length === 0) {
-            contenedorUsuarios.innerHTML = '<p>No hay usuarios registrados todavía.</p>';
-            return;
-          }
-
-          const tabla = document.createElement('table');
-          tabla.style.cssText = 'width: 100%; border-collapse: collapse; margin-top: 10px;';
-          tabla.innerHTML = `
-            <thead>
-              <tr style="background-color: #f3f4f6; text-align: left;">
-                <th style="${ESTILO_CELDA}">Email</th>
-                <th style="${ESTILO_CELDA}">Rol</th>
-                <th style="${ESTILO_CELDA}">Estado</th>
-                <th style="${ESTILO_CELDA}">Acciones</th>
-              </tr>
-            </thead>`;
-          const cuerpo = document.createElement('tbody');
-
-          usuarios.forEach(u => {
-            const fila = document.createElement('tr');
-            const colorRol = u.rol === 'admin' ? '#166534' : '#1e40af';
-            fila.appendChild(celda(u.email));
-            fila.appendChild(celda(u.rol, `color: ${colorRol}; font-weight: bold;`));
-            fila.appendChild(celda(u.estado, `color: ${COLORES_ESTADO[u.estado] || '#111827'}; font-weight: bold;`));
-
-            const acciones = celda('');
-            acciones.appendChild(boton('¿Activo?', '#2563eb', () => comprobarActivo(u)));
-            // El admin no puede eliminarse a sí mismo (RN-09) ni eliminar dos veces la misma cuenta
-            if (u.id !== yo.usuario.id && u.estado !== 'eliminado') {
-              acciones.appendChild(boton('Eliminar', '#dc2626', () => eliminar(u)));
-            }
-            fila.appendChild(acciones);
-            cuerpo.appendChild(fila);
-          });
-
-          tabla.appendChild(cuerpo);
-          contenedorUsuarios.replaceChildren(tabla);
-        } catch (error) {
-          console.error('Error al cargar usuarios:', error);
-          mostrarMensaje(error.message || 'Error al conectar con el servidor.');
-          contenedorUsuarios.innerHTML = '';
-        }
-      }
-
-      // --- Sectores (RF-22) ---
-      const contenedorSectores = document.getElementById('lista-sectores');
-      const formSector = document.getElementById('form-sector');
-      const inputSector = document.getElementById('nuevo-sector');
-
-      formSector.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        try {
-          const sector = await peticion('POST', '/api/sectores', { nombre: inputSector.value });
-          mostrarMensaje(`Sector «${sector.nombre}» creado`, true);
-          formSector.reset();
-          await cargarSectores();
-        } catch (error) {
-          mostrarMensaje(error.message);
-        }
-      });
-
-      async function renombrarSector(s) {
-        const nombre = prompt(`Nuevo nombre para «${s.nombre}»:`, s.nombre);
-        if (nombre === null || nombre.trim() === s.nombre) return;
-        try {
-          const actualizado = await peticion('PATCH', `/api/sectores/${s.id}`, { nombre });
-          mostrarMensaje(`Sector renombrado a «${actualizado.nombre}»`, true);
-          await cargarSectores();
-        } catch (error) {
-          mostrarMensaje(error.message);
-        }
-      }
-
-      async function cambiarEstadoSector(s) {
-        try {
-          await peticion('PATCH', `/api/sectores/${s.id}`, { activo: !s.activo });
-          mostrarMensaje(`Sector «${s.nombre}» ${s.activo ? 'desactivado' : 'activado'}`, true);
-          await cargarSectores();
-        } catch (error) {
-          mostrarMensaje(error.message);
-        }
-      }
-
-      async function cargarSectores() {
-        try {
-          const sectores = await peticion('GET', '/api/sectores/todos');
-          if (sectores.length === 0) {
-            contenedorSectores.innerHTML = '<p>No hay sectores todavía.</p>';
-            return;
-          }
-          const tabla = document.createElement('table');
-          tabla.style.cssText = 'width: 100%; border-collapse: collapse; margin-top: 10px;';
-          tabla.innerHTML = `
-            <thead>
-              <tr style="background-color: #f3f4f6; text-align: left;">
-                <th style="${ESTILO_CELDA}">Sector</th>
-                <th style="${ESTILO_CELDA}">Estado</th>
-                <th style="${ESTILO_CELDA}">Acciones</th>
-              </tr>
-            </thead>`;
-          const cuerpo = document.createElement('tbody');
-          sectores.forEach(s => {
-            const fila = document.createElement('tr');
-            fila.appendChild(celda(s.nombre, s.activo ? '' : 'color: #6b7280;'));
-            fila.appendChild(celda(s.activo ? 'activo' : 'desactivado',
-              `color: ${s.activo ? '#166534' : '#6b7280'}; font-weight: bold;`));
-            const acciones = celda('');
-            acciones.appendChild(boton('Renombrar', '#2563eb', () => renombrarSector(s)));
-            acciones.appendChild(s.activo
-              ? boton('Desactivar', '#dc2626', () => cambiarEstadoSector(s))
-              : boton('Activar', '#166534', () => cambiarEstadoSector(s)));
-            fila.appendChild(acciones);
-            cuerpo.appendChild(fila);
-          });
-          tabla.appendChild(cuerpo);
-          contenedorSectores.replaceChildren(tabla);
-        } catch (error) {
-          mostrarMensaje(error.message);
-          contenedorSectores.innerHTML = '';
-        }
-      }
-
-      cargarUsuarios();
-      cargarSectores();
-    });
-  </script>
+  <script src="admin.js"></script>
 </body>
 </html>

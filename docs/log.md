@@ -4,6 +4,9 @@ Este bundle documenta el estado comprobable del repositorio; la última actualiz
 
 ## Cronología
 
+- 2026-11-06 · Logo y fotos de trabajos opcionales en el perfil (RF-23, D-24); 44 pruebas.
+- 2026-11-06 · Rediseño visual en verde pino (D-23): estilos en `cliente/css/`, JavaScript de cada página en su archivo, ficha de ejemplo en el acceso y vista previa con progreso en «Mi perfil».
+- 2026-11-06 · Rama `feat/perfil-profesional`: perfil del profesional con sectores, especialidades y zona de actuación; página «Mi perfil»; 38 pruebas.
 - 2026-11-06 · Rama `feat/catalogos`: sectores (RF-17, RF-22, RN-05) y catálogo de 145 ciudades con autocompletado; 28 pruebas.
 - 2026-11-06 · Rama `feat/estado-usuarios`: estado de usuario, rol `profesional`, RF-08, RF-09, RN-08, RN-09 y RN-11; el registro deja de aceptar el rol desde el cliente; 19 pruebas.
 - 2026-11-05 · Rama `chore/cierre-pendientes-sprint1`: se elimina el secreto JWT de respaldo (RNF-02), se documentan la URL pública (RNF-05) y el despliegue continuo (PRO-03) y se corrige la documentación.

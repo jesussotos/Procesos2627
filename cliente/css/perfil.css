@@ -1,0 +1,403 @@
+/* ==========================================================================
+   «Mi perfil» del profesional (dashboard.html)
+   ========================================================================== */
+
+/* Progreso de la ficha, dentro de la banda verde */
+.progreso {
+  min-width: 260px;
+}
+
+.progreso-titulo {
+  font-size: 0.875rem;
+  color: var(--salvia);
+}
+
+.progreso-titulo strong {
+  color: #FFFFFF;
+}
+
+.progreso-barra {
+  height: 4px;
+  margin: 8px 0 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progreso-barra span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #FFFFFF;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progreso ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, auto));
+  gap: 4px 20px;
+  font-size: 0.8125rem;
+  color: var(--salvia);
+}
+
+.progreso li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progreso li::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--salvia);
+  border-radius: 50%;
+}
+
+.progreso li.hecho {
+  color: #FFFFFF;
+}
+
+.progreso li.hecho::before {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  box-shadow: inset 0 0 0 2.5px var(--pino-profundo);
+}
+
+/* Formulario a la izquierda, vista previa fija a la derecha */
+.perfil-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: start;
+  gap: 32px;
+  padding-top: 32px;
+  padding-bottom: 96px;
+}
+
+.perfil-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.vista-previa {
+  position: sticky;
+  top: 24px;
+}
+
+.vista-previa > p {
+  margin-bottom: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--grafito);
+}
+
+.campos {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+/* Sectores: lista con casilla y especialidad */
+.lista-sectores {
+  border-top: 1px solid var(--linea);
+}
+
+.sector {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 16px;
+  min-height: 52px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--linea);
+}
+
+.casilla {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.casilla input {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--pino);
+}
+
+.sector.no-disponible .casilla span {
+  color: var(--grafito);
+}
+
+/* Ciudades: autocompletado y etiquetas */
+.buscador-ciudad {
+  position: relative;
+}
+
+.sugerencias {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 264px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--superficie);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--radio);
+  box-shadow: 0 12px 28px rgba(26, 29, 31, 0.1);
+}
+
+.sugerencias li {
+  padding: 9px 12px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.sugerencias li + li {
+  border-top: 1px solid var(--linea);
+}
+
+.sugerencias li[role=option]:hover {
+  background: var(--pino-claro);
+}
+
+.sugerencias .sin-resultados {
+  color: var(--grafito);
+  cursor: default;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px 3px 12px;
+  font-size: 0.875rem;
+  color: var(--pino-oscuro);
+  background: var(--pino-claro);
+  border-radius: 999px;
+}
+
+.chip button {
+  width: 24px;
+  height: 24px;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--pino);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.chip button:hover {
+  color: var(--rojo);
+  background: #FFFFFF;
+}
+
+/* Logo y fotos */
+.imagenes {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.imagenes-bloque h3 {
+  margin-bottom: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.subida-logo {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.logo-actual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 88px;
+  height: 88px;
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--pino);
+  background: var(--pino-claro);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.logo-actual img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #FFFFFF;
+}
+
+.logo-actual.con-imagen {
+  border: 1px solid var(--linea);
+}
+
+.acciones-imagen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.acciones-imagen > div {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.galeria-edicion {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.foto {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--pino-claro);
+}
+
+.foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.foto button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--tinta);
+  background: rgba(255, 255, 255, 0.92);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.foto button:hover {
+  color: var(--rojo);
+}
+
+.anadir-foto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  aspect-ratio: 4 / 3;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--pino);
+  border: 1.5px dashed var(--salvia);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.anadir-foto span {
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.anadir-foto:hover {
+  background: var(--pino-claro);
+  border-color: var(--pino);
+}
+
+.subiendo {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Barra de guardar */
+.pie-formulario {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-grande);
+}
+
+.zona-cuenta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.zona-cuenta p {
+  max-width: 48ch;
+  font-size: 0.875rem;
+  color: var(--grafito);
+}
+
+@media (max-width: 960px) {
+  .perfil-cuerpo {
+    grid-template-columns: 1fr;
+  }
+  .vista-previa {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .perfil-cuerpo {
+    padding-top: 20px;
+  }
+  .sector {
+    grid-template-columns: 1fr;
+  }
+  .rejilla {
+    grid-template-columns: 1fr;
+  }
+  .progreso {
+    min-width: 0;
+    width: 100%;
+  }
+  .pie-formulario {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    text-align: center;
+  }
+}

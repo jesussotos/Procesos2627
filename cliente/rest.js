@@ -10,15 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function mostrarMensaje(texto, esExito = false) {
     mensajeDiv.style.display = 'block';
     mensajeDiv.textContent = texto;
-    if (esExito) {
-      mensajeDiv.style.backgroundColor = '#f0fdf4';
-      mensajeDiv.style.color = '#166534';
-      mensajeDiv.style.borderColor = '#bbf7d0';
-    } else {
-      mensajeDiv.style.backgroundColor = '#fef2f2';
-      mensajeDiv.style.color = '#dc2626';
-      mensajeDiv.style.borderColor = '#fecaca';
-    }
+    mensajeDiv.classList.toggle('alert-exito', esExito);
   }
 
   async function verificarSesion() {
@@ -40,7 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         authContainer.style.display = 'none';
         sessionContainer.style.display = 'flex';
-        userInfo.textContent = `Sesión iniciada como: ${data.usuario.email} (${data.usuario.rol})`;
+        userInfo.textContent = `Has entrado como ${data.usuario.email}.`;
+        document.getElementById('ir-panel').href = data.usuario.rol === 'admin' ? '/admin.html' : '/dashboard.html';
       } else {
         localStorage.removeItem('jwt_token');
         authContainer.style.display = 'block';
@@ -73,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
           localStorage.setItem('jwt_token', data.token);
           localStorage.setItem('rol', data.usuario.rol); // Guardamos el rol que viene del servidor
 
-          mostrarMensaje('¡Inicio de sesión exitoso!', true);
+          mostrarMensaje('Sesión iniciada', true);
           
           // Redirección automática según el rol
           setTimeout(() => {
@@ -123,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
           tabRegistro.classList.remove('active');
           tabLogin.classList.add('active');
 
-          mostrarMensaje(`Cuenta creada. Te hemos enviado un correo a ${email}: confirma tu cuenta antes de iniciar sesión.`, true);
+          mostrarMensaje(`Cuenta creada. Te hemos enviado un correo a ${email} para confirmarla antes de iniciar sesión.`, true);
         } else {
           mostrarMensaje(data.error || 'Error al registrar el usuario');
         }
@@ -137,15 +130,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnLogout) {
     btnLogout.addEventListener('click', () => {
       localStorage.removeItem('jwt_token');
+      localStorage.removeItem('rol');
       verificarSesion();
-      mostrarMensaje('Has cerrado sesión correctamente', true);
+      mostrarMensaje('Sesión cerrada', true);
     });
   }
 
   // Resultado de la confirmación por correo (el servidor redirige aquí con ?confirmacion=...)
   const params = new URLSearchParams(window.location.search);
   if (params.get('confirmacion') === 'ok') {
-    mostrarMensaje('¡Cuenta confirmada! Ya puedes iniciar sesión.', true);
+    mostrarMensaje('Cuenta confirmada. Ya puedes iniciar sesión.', true);
   } else if (params.get('confirmacion') === 'error') {
     mostrarMensaje(params.get('motivo') || 'No se pudo confirmar la cuenta');
   }

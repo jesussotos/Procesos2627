@@ -94,6 +94,50 @@ async function inicializar() {
     )
   `);
 
+  // --- Perfil del profesional (Sprint 2) ---
+  // Un perfil por usuario; sectores (con especialidad) y ciudades en tablas de unión
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS perfiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario_id INTEGER NOT NULL UNIQUE REFERENCES usuarios(id),
+      nombre_comercial TEXT NOT NULL,
+      descripcion TEXT,
+      telefono TEXT,
+      email_contacto TEXT,
+      web TEXT,
+      whatsapp TEXT,
+      actualizado INTEGER NOT NULL
+    )
+  `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS perfil_sectores (
+      perfil_id INTEGER NOT NULL REFERENCES perfiles(id),
+      sector_id INTEGER NOT NULL REFERENCES sectores(id),
+      especialidad TEXT NOT NULL,
+      PRIMARY KEY (perfil_id, sector_id)
+    )
+  `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS perfil_ciudades (
+      perfil_id INTEGER NOT NULL REFERENCES perfiles(id),
+      ciudad_id INTEGER NOT NULL REFERENCES ciudades(id),
+      PRIMARY KEY (perfil_id, ciudad_id)
+    )
+  `);
+
+  // Imágenes del profesional: logo (como mucho uno) y fotos de sus trabajos.
+  // Se guardan en la base de datos porque el disco de Cloud Run se borra en cada despliegue (D-24)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS imagenes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+      tipo TEXT NOT NULL CHECK (tipo IN ('logo', 'trabajo')),
+      mime TEXT NOT NULL,
+      datos BLOB NOT NULL,
+      creada INTEGER NOT NULL
+    )
+  `);
+
   // Los sectores iniciales solo se cargan si la tabla está vacía, para respetar los cambios del administrador
   const { rows } = await db.execute('SELECT COUNT(*) AS total FROM sectores');
   if (Number(rows[0][0]) === 0) {
@@ -263,8 +307,123 @@ module.exports = {
     return buscarUno('SELECT id, nombre, provincia FROM ciudades WHERE id = ?', [id]);
   },
 
-  // Solo para las pruebas: vacía usuarios y sectores (las ciudades son un catálogo fijo)
+  // --- Perfil del profesional ---
+
+  buscarPerfilPorUsuario: async (usuarioId) => {
+    return buscarUno(
+      `SELECT id, usuario_id, nombre_comercial, descripcion, telefono, email_contacto, web, whatsapp, actualizado
+       FROM perfiles WHERE usuario_id = ?`,
+      [usuarioId]
+    );
+  },
+
+  // Crea el perfil o actualiza sus datos básicos; devuelve el id del perfil
+  guardarPerfil: async (usuarioId, perfil) => {
+    await consultar(
+      `INSERT INTO perfiles (usuario_id, nombre_comercial, descripcion, telefono, email_contacto, web, whatsapp, actualizado)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (usuario_id) DO UPDATE SET
+         nombre_comercial = excluded.nombre_comercial, descripcion = excluded.descripcion,
+         telefono = excluded.telefono, email_contacto = excluded.email_contacto,
+         web = excluded.web, whatsapp = excluded.whatsapp, actualizado = excluded.actualizado`,
+      [usuarioId, perfil.nombreComercial, perfil.descripcion, perfil.telefono,
+        perfil.emailContacto, perfil.web, perfil.whatsapp, Date.now()]
+    );
+    const { id } = await buscarUno('SELECT id FROM perfiles WHERE usuario_id = ?', [usuarioId]);
+    return id;
+  },
+
+  sectoresDePerfil: async (perfilId) => {
+    const resultado = await consultar(
+      `SELECT s.id, s.nombre, s.activo, ps.especialidad
+       FROM perfil_sectores ps JOIN sectores s ON s.id = ps.sector_id
+       WHERE ps.perfil_id = ? ORDER BY s.nombre`,
+      [perfilId]
+    );
+    return aObjetos(resultado).map((f) => ({ ...f, activo: Boolean(f.activo) }));
+  },
+
+  ciudadesDePerfil: async (perfilId) => {
+    const resultado = await consultar(
+      `SELECT c.id, c.nombre, c.provincia
+       FROM perfil_ciudades pc JOIN ciudades c ON c.id = pc.ciudad_id
+       WHERE pc.perfil_id = ? ORDER BY c.nombre`,
+      [perfilId]
+    );
+    return aObjetos(resultado);
+  },
+
+  // Sustituye la lista completa de sectores del perfil: [{ sectorId, especialidad }]
+  reemplazarSectoresPerfil: async (perfilId, sectores) => {
+    await consultar('DELETE FROM perfil_sectores WHERE perfil_id = ?', [perfilId]);
+    await insertarVarios('perfil_sectores', ['perfil_id', 'sector_id', 'especialidad'],
+      sectores.map((s) => [perfilId, s.sectorId, s.especialidad]));
+  },
+
+  // Sustituye la lista completa de ciudades del perfil: [ciudadId]
+  reemplazarCiudadesPerfil: async (perfilId, ciudadIds) => {
+    await consultar('DELETE FROM perfil_ciudades WHERE perfil_id = ?', [perfilId]);
+    await insertarVarios('perfil_ciudades', ['perfil_id', 'ciudad_id'],
+      ciudadIds.map((id) => [perfilId, id]));
+  },
+
+  // Borra el perfil y sus listas (al reactivar una cuenta eliminada, D-17)
+  borrarPerfilDeUsuario: async (usuarioId) => {
+    const perfil = await buscarUno('SELECT id FROM perfiles WHERE usuario_id = ?', [usuarioId]);
+    if (!perfil) return;
+    await consultar('DELETE FROM perfil_sectores WHERE perfil_id = ?', [perfil.id]);
+    await consultar('DELETE FROM perfil_ciudades WHERE perfil_id = ?', [perfil.id]);
+    await consultar('DELETE FROM perfiles WHERE id = ?', [perfil.id]);
+  },
+
+  // --- Imágenes (logo y fotos de trabajos) ---
+
+  // Solo los datos de cada imagen, sin el contenido binario
+  imagenesDeUsuario: async (usuarioId) => {
+    const resultado = await consultar(
+      'SELECT id, tipo FROM imagenes WHERE usuario_id = ? ORDER BY id',
+      [usuarioId]
+    );
+    return aObjetos(resultado);
+  },
+
+  guardarImagen: async ({ usuarioId, tipo, mime, datos }) => {
+    const resultado = await consultar(
+      'INSERT INTO imagenes (usuario_id, tipo, mime, datos, creada) VALUES (?, ?, ?, ?, ?)',
+      [usuarioId, tipo, mime, datos, Date.now()]
+    );
+    return Number(resultado.lastInsertRowid);
+  },
+
+  // Imagen completa junto con el estado de su dueño (para no servir las de cuentas eliminadas)
+  buscarImagen: async (id) => {
+    const imagen = await buscarUno(
+      `SELECT i.id, i.usuario_id, i.tipo, i.mime, i.datos, u.estado
+       FROM imagenes i JOIN usuarios u ON u.id = i.usuario_id WHERE i.id = ?`,
+      [id]
+    );
+    if (imagen) imagen.datos = Buffer.from(imagen.datos);
+    return imagen;
+  },
+
+  borrarImagen: async (id) => {
+    await consultar('DELETE FROM imagenes WHERE id = ?', [id]);
+  },
+
+  borrarLogo: async (usuarioId) => {
+    await consultar("DELETE FROM imagenes WHERE usuario_id = ? AND tipo = 'logo'", [usuarioId]);
+  },
+
+  borrarImagenesDeUsuario: async (usuarioId) => {
+    await consultar('DELETE FROM imagenes WHERE usuario_id = ?', [usuarioId]);
+  },
+
+  // Solo para las pruebas: vacía los datos (las ciudades son un catálogo fijo)
   limpiar: async () => {
+    await consultar('DELETE FROM imagenes');
+    await consultar('DELETE FROM perfil_sectores');
+    await consultar('DELETE FROM perfil_ciudades');
+    await consultar('DELETE FROM perfiles');
     await consultar('DELETE FROM usuarios');
     await consultar('DELETE FROM sectores');
   }
