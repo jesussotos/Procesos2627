@@ -31,11 +31,18 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     await logica.confirmarCuenta(correo.ultimoToken());
   }
 
+  // Registra, confirma e inicia sesión; devuelve el usuario tal como lo ve la API ({ id, email, rol })
+  async function crearSesion(email, rol) {
+    await registrarYConfirmar(email, '123456', rol);
+    const { token } = await logica.iniciarSesion(email, '123456');
+    return { token, usuario: await logica.comprobarSesion(token) };
+  }
+
   test('1. Debe registrar un usuario pendiente y enviarle el correo de confirmación', async () => {
     const usuario = await logica.registrarUsuario('test3@example.com', '123456');
     expect(usuario.email).toBe('test3@example.com');
-    expect(usuario.rol).toBe('usuario');
-    expect(usuario.confirmado).toBe(false);
+    expect(usuario.rol).toBe('profesional');
+    expect(usuario.estado).toBe('pendiente');
     expect(correo.enviados).toHaveLength(1);
     expect(correo.enviados[0].email).toBe('test3@example.com');
   });
@@ -102,5 +109,90 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     } finally {
       process.env.JWT_SECRET = secreto;
     }
+  });
+
+  // --- Sprint 2: estado de usuario, eliminación y reactivación ---
+
+  test('10. RF-08: Un usuario solo está activo tras confirmar su correo', async () => {
+    await logica.registrarUsuario('estado@example.com', '123456');
+    const { id } = await datos.buscarPorEmail('estado@example.com');
+    expect((await logica.usuarioActivo(id)).activo).toBe(false);
+
+    await logica.confirmarCuenta(correo.ultimoToken());
+    const resultado = await logica.usuarioActivo(id);
+    expect(resultado.activo).toBe(true);
+    expect(resultado.estado).toBe('activo');
+  });
+
+  test('11. RF-08 Error: Comprobar un usuario que no existe', async () => {
+    await expect(logica.usuarioActivo(9999)).rejects.toThrow('Usuario no encontrado');
+  });
+
+  test('12. RN-09: Un profesional puede eliminar su propia cuenta', async () => {
+    const { usuario } = await crearSesion('yo@example.com');
+    await logica.eliminarUsuario(usuario, usuario.id);
+    const resultado = await logica.usuarioActivo(usuario.id);
+    expect(resultado.estado).toBe('eliminado');
+    expect(resultado.activo).toBe(false);
+  });
+
+  test('13. RN-09 Error: Un profesional no puede eliminar a otro', async () => {
+    const { usuario: yo } = await crearSesion('yo@example.com');
+    const { usuario: otro } = await crearSesion('otro@example.com');
+    await expect(logica.eliminarUsuario(yo, otro.id)).rejects.toThrow('No tienes permiso');
+    expect((await logica.usuarioActivo(otro.id)).activo).toBe(true);
+  });
+
+  test('14. RN-09: El administrador puede eliminar a un profesional', async () => {
+    const { usuario: admin } = await crearSesion('jefe@example.com', 'admin');
+    const { usuario: profesional } = await crearSesion('pro@example.com');
+    await logica.eliminarUsuario(admin, profesional.id);
+    expect((await logica.usuarioActivo(profesional.id)).estado).toBe('eliminado');
+  });
+
+  test('15. RN-09 Error: El administrador no puede eliminarse a sí mismo', async () => {
+    const { usuario: admin } = await crearSesion('jefe@example.com', 'admin');
+    await expect(logica.eliminarUsuario(admin, admin.id)).rejects.toThrow('propia cuenta');
+  });
+
+  test('16. RN-08 Error: Un usuario eliminado no puede iniciar sesión', async () => {
+    const { usuario } = await crearSesion('baja@example.com');
+    await logica.eliminarUsuario(usuario, usuario.id);
+    await expect(
+      logica.iniciarSesion('baja@example.com', '123456')
+    ).rejects.toThrow('Credenciales incorrectas');
+  });
+
+  test('17. RN-08 Error: La sesión abierta de un usuario eliminado deja de valer', async () => {
+    const { token, usuario } = await crearSesion('baja@example.com');
+    await logica.eliminarUsuario(usuario, usuario.id);
+    await expect(logica.comprobarSesion(token)).rejects.toThrow('La sesión ya no es válida');
+  });
+
+  test('18. RN-11: Una cuenta eliminada se puede registrar otra vez con el mismo correo', async () => {
+    const { usuario } = await crearSesion('vuelve@example.com');
+    await logica.eliminarUsuario(usuario, usuario.id);
+
+    const reactivado = await logica.registrarUsuario('vuelve@example.com', 'nueva123');
+    expect(reactivado.estado).toBe('pendiente');
+    await logica.confirmarCuenta(correo.ultimoToken());
+
+    // Es la misma cuenta (mismo id), con la contraseña nueva; la antigua ya no vale
+    const res = await logica.iniciarSesion('vuelve@example.com', 'nueva123');
+    expect(res.usuario.id).toBe(usuario.id);
+    await expect(
+      logica.iniciarSesion('vuelve@example.com', '123456')
+    ).rejects.toThrow('Credenciales incorrectas');
+  });
+
+  test('19. El listado del administrador muestra email, rol y estado', async () => {
+    await crearSesion('activo@example.com');
+    await logica.registrarUsuario('pendiente@example.com', '123456');
+    const lista = await logica.listarUsuarios();
+    expect(lista).toEqual(expect.arrayContaining([
+      expect.objectContaining({ email: 'activo@example.com', rol: 'profesional', estado: 'activo' }),
+      expect.objectContaining({ email: 'pendiente@example.com', rol: 'profesional', estado: 'pendiente' })
+    ]));
+    expect(lista[0].password).toBeUndefined();
   });
 });

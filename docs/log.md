@@ -1,9 +1,10 @@
 # Log del bundle
 
-Este bundle documenta el estado comprobable del repositorio; la última actualización es del 2026-11-05. Los archivos enlazados desde este índice contienen la evidencia por tema.
+Este bundle documenta el estado comprobable del repositorio; la última actualización es del 2026-11-06. Los archivos enlazados desde este índice contienen la evidencia por tema.
 
 ## Cronología
 
+- 2026-11-06 · Rama `feat/estado-usuarios`: estado de usuario, rol `profesional`, RF-08, RF-09, RN-08, RN-09 y RN-11; el registro deja de aceptar el rol desde el cliente; 19 pruebas.
 - 2026-11-05 · Rama `chore/cierre-pendientes-sprint1`: se elimina el secreto JWT de respaldo (RNF-02), se documentan la URL pública (RNF-05) y el despliegue continuo (PRO-03) y se corrige la documentación.
 - 2026-11-05 · `32b25cc` · persistencia en Turso con `@libsql/client` (RNF-09), rama `feat/persistencia-produccion`.
 - 2026-11-04 · `fbdf975` · merge de `#16`: confirmación de cuenta por correo con la API de Brevo (RF-02).

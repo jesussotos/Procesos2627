@@ -15,6 +15,13 @@ function secretoJwt() {
 }
 const VALIDEZ_TOKEN_CONFIRMACION_MS = 24 * 60 * 60 * 1000; // 24 horas
 
+// Error con código HTTP sugerido, para que la API responda 403/404 sin conocer las reglas
+function errorDe(mensaje, status) {
+  const error = new Error(mensaje);
+  error.status = status;
+  return error;
+}
+
 // Adaptador de correo inyectado desde la composición (api.js) o desde las pruebas.
 // Debe ofrecer: enviarConfirmacion(email, token)
 let correo = null;
@@ -24,43 +31,52 @@ const logica = {
     correo = adaptador;
   },
 
-  // Registro asíncrono: la cuenta queda pendiente hasta confirmar el correo
-  registrarUsuario: async (email, password, rol = 'usuario') => {
+  // Registro asíncrono: la cuenta queda pendiente hasta confirmar el correo.
+  // RN-11: si el email pertenece a una cuenta eliminada, se reactiva esa misma cuenta.
+  registrarUsuario: async (email, password, rol = 'profesional') => {
     if (!correo) {
       throw new Error('El servicio de correo no está configurado');
     }
 
     const existe = await datos.buscarPorEmail(email);
-    if (existe) {
+    if (existe && existe.estado !== 'eliminado') {
       throw new Error('El usuario ya existe');
     }
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
     const tokenConfirmacion = crypto.randomBytes(32).toString('hex');
-
-    const nuevoUsuario = {
+    const datosCuenta = {
       email,
       password: passwordHash,
       rol,
-      confirmado: false,
+      estado: 'pendiente',
       tokenConfirmacion,
       tokenExpira: Date.now() + VALIDEZ_TOKEN_CONFIRMACION_MS
     };
 
-    const usuarioGuardado = await datos.guardar(nuevoUsuario);
+    if (existe) {
+      // Cuando exista el perfil profesional, aquí se descartará el perfil anterior
+      await datos.reactivar(existe.id, datosCuenta);
+    } else {
+      await datos.guardar(datosCuenta);
+    }
 
     try {
       await correo.enviarConfirmacion(email, tokenConfirmacion);
     } catch (error) {
-      // Si el correo no sale, deshacemos el alta para que el usuario pueda volver a registrarse
-      await datos.eliminarPorEmail(email);
+      // Si el correo no sale, deshacemos el alta para que el usuario pueda volver a intentarlo
+      if (existe) {
+        await datos.marcarEliminado(existe.id);
+      } else {
+        await datos.eliminarPorEmail(email);
+      }
       console.error(`[registro] Error enviando confirmación a ${email}:`, error.message);
       throw new Error('No se pudo enviar el correo de confirmación. Inténtalo de nuevo más tarde');
     }
 
-    console.log(`[registro] Usuario ${email} registrado, pendiente de confirmar`);
-    return { email: usuarioGuardado.email, rol: usuarioGuardado.rol, confirmado: false };
+    console.log(`[registro] Usuario ${email} ${existe ? 'reactivado' : 'registrado'}, pendiente de confirmar`);
+    return { email, rol, estado: 'pendiente' };
   },
 
   // Confirmación de cuenta a partir del token recibido por correo
@@ -70,7 +86,7 @@ const logica = {
     }
 
     const usuario = await datos.buscarPorTokenConfirmacion(token);
-    if (!usuario) {
+    if (!usuario || usuario.estado !== 'pendiente') {
       throw new Error('El enlace de confirmación no es válido o ya se ha usado');
     }
     if (usuario.token_expira && usuario.token_expira < Date.now()) {
@@ -85,7 +101,9 @@ const logica = {
   // Inicio de sesión asíncrono
   iniciarSesion: async (email, password) => {
     const usuario = await datos.buscarPorEmail(email);
-    if (!usuario) {
+
+    // RN-08: una cuenta eliminada responde igual que una inexistente
+    if (!usuario || usuario.estado === 'eliminado') {
       throw new Error('Credenciales incorrectas');
     }
 
@@ -95,7 +113,7 @@ const logica = {
     }
 
     // Se comprueba después de la contraseña para no revelar qué cuentas existen
-    if (!usuario.confirmado) {
+    if (usuario.estado !== 'activo') {
       throw new Error('Debes confirmar tu correo antes de iniciar sesión');
     }
 
@@ -108,11 +126,11 @@ const logica = {
 
     return {
       token,
-      usuario: { email: usuario.email, rol: usuario.rol }
+      usuario: { id: usuario.id, email: usuario.email, rol: usuario.rol }
     };
   },
 
-  // Verificación de token JWT
+  // Verificación de token JWT (solo firma y caducidad)
   verificarToken: (token) => {
     try {
       return jwt.verify(token, secretoJwt());
@@ -121,9 +139,58 @@ const logica = {
     }
   },
 
-  // Listar usuarios (solo accesible por Administradores)
+  // Verificación completa de una sesión: token válido y cuenta todavía activa.
+  // RN-08: si la cuenta se elimina, sus tokens dejan de servir aunque no hayan caducado.
+  // El rol se toma de la base de datos, no del token, para que un cambio de rol se aplique ya.
+  comprobarSesion: async (token) => {
+    const datosToken = logica.verificarToken(token);
+    const usuario = await datos.buscarPorId(datosToken.id);
+    if (!usuario || usuario.estado !== 'activo') {
+      throw new Error('La sesión ya no es válida');
+    }
+    return { id: usuario.id, email: usuario.email, rol: usuario.rol };
+  },
+
+  // Listar usuarios (solo accesible por Administradores): email, rol y estado
   listarUsuarios: async () => {
     return await datos.obtenerTodos();
+  },
+
+  // RF-08: comprobar si un usuario está activo (confirmado o creado por OAuth, y no eliminado)
+  usuarioActivo: async (id) => {
+    const usuario = await datos.buscarPorId(id);
+    if (!usuario) {
+      throw errorDe('Usuario no encontrado', 404);
+    }
+    return {
+      id: usuario.id,
+      email: usuario.email,
+      estado: usuario.estado,
+      activo: usuario.estado === 'activo'
+    };
+  },
+
+  // RF-09: eliminar un usuario (borrado lógico, RN-08) aplicando RN-09:
+  // un profesional solo puede eliminarse a sí mismo; el administrador puede eliminar a cualquiera salvo a sí mismo.
+  eliminarUsuario: async (solicitante, idObjetivo) => {
+    const esAdmin = solicitante.rol === 'admin';
+    const esElMismo = solicitante.id === idObjetivo;
+
+    if (esAdmin && esElMismo) {
+      throw errorDe('El administrador no puede eliminar su propia cuenta', 403);
+    }
+    if (!esAdmin && !esElMismo) {
+      throw errorDe('No tienes permiso para eliminar a otro usuario', 403);
+    }
+
+    const usuario = await datos.buscarPorId(idObjetivo);
+    if (!usuario || usuario.estado === 'eliminado') {
+      throw errorDe('Usuario no encontrado', 404);
+    }
+
+    await datos.marcarEliminado(usuario.id);
+    console.log(`[eliminacion] Cuenta ${usuario.email} eliminada por ${solicitante.email}`);
+    return { id: usuario.id, email: usuario.email, estado: 'eliminado' };
   },
 
   // Creación automática del admin usando variables de entorno para mayor seguridad
@@ -149,7 +216,7 @@ const logica = {
           email: emailAdmin,
           password: passwordHash,
           rol: 'admin',
-          confirmado: true
+          estado: 'activo'
         });
         console.log('✅ Usuario administrador creado de forma segura.');
       }
