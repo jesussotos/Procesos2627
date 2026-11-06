@@ -74,4 +74,17 @@ Las decisiones D-07 a D-13 del dominio del Sprint 2 están en la especificación
 - **Por qué:** RN-08 exige que un usuario eliminado deje de poder usar la aplicación; un JWT seguiría siendo válido hasta caducar (2 h). El coste es una consulta por petición protegida.
 - **Estado:** vigente.
 
+## D-19: Catálogo reducido de ciudades
+
+- **Qué se decidió:** Cargar 145 ciudades en lugar de los más de 8.000 municipios de España: las 50 capitales de provincia, Ceuta, Melilla y las ciudades más pobladas de cada provincia, cada una con su provincia ([servidor/catalogos.js](../servidor/catalogos.js)).
+- **Por qué:** El objetivo del sprint es el funcionamiento del directorio, no la exhaustividad del catálogo. Se escribe a mano sin depender de un archivo externo y se puede ampliar sin migraciones: las ciudades se insertan con `INSERT OR IGNORE` en cada arranque.
+- **Desviación:** La especificación (apartado 3.3) pide el catálogo de municipios de España. Para cumplirla basta con sustituir la lista por la relación de municipios del INE.
+- **Estado:** vigente.
+
+## D-20: Unicidad de sectores con un nombre normalizado
+
+- **Qué se decidió:** Guardar junto al nombre del sector una versión sin mayúsculas ni tildes con un índice `UNIQUE`, además de comprobarlo en la lógica.
+- **Por qué:** RN-05 debe cumplirse aunque dos peticiones lleguen a la vez; la lógica da el mensaje de error y la base de datos es la última barrera.
+- **Estado:** vigente.
+
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**

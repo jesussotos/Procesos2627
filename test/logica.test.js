@@ -195,4 +195,65 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     ]));
     expect(lista[0].password).toBeUndefined();
   });
+
+  // --- Sprint 2: catálogos de sectores y ciudades ---
+
+  test('20. RF-22: El administrador crea un sector y aparece entre los activos', async () => {
+    const sector = await logica.crearSector('  Fontanería  ');
+    expect(sector.nombre).toBe('Fontanería');
+    const activos = await logica.listarSectores();
+    expect(activos.map(s => s.nombre)).toContain('Fontanería');
+  });
+
+  test('21. RN-05 Error: No se puede crear "fontaneria" si existe "Fontanería"', async () => {
+    await logica.crearSector('Fontanería');
+    await expect(logica.crearSector('fontaneria')).rejects.toThrow('Ya existe un sector con ese nombre');
+    await expect(logica.crearSector('FONTANERÍA')).rejects.toThrow('Ya existe un sector con ese nombre');
+  });
+
+  test('22. RN-05 Error: No se puede renombrar un sector con el nombre de otro', async () => {
+    await logica.crearSector('Pintura');
+    const otro = await logica.crearSector('Electricidad');
+    await expect(logica.renombrarSector(otro.id, 'pintura')).rejects.toThrow('Ya existe un sector con ese nombre');
+  });
+
+  test('23. RF-22: Renombrar un sector (también cambiando solo tildes o mayúsculas)', async () => {
+    const sector = await logica.crearSector('Informatica');
+    const renombrado = await logica.renombrarSector(sector.id, 'Informática');
+    expect(renombrado.nombre).toBe('Informática');
+    expect((await logica.listarSectores()).map(s => s.nombre)).toEqual(['Informática']);
+  });
+
+  test('24. RN-04: Un sector desactivado deja de listarse, pero no se borra', async () => {
+    const sector = await logica.crearSector('Mudanzas');
+    await logica.cambiarEstadoSector(sector.id, false);
+    expect(await logica.listarSectores()).toHaveLength(0);
+    const todos = await logica.listarSectores({ incluirInactivos: true });
+    expect(todos).toEqual([expect.objectContaining({ nombre: 'Mudanzas', activo: false })]);
+
+    await logica.cambiarEstadoSector(sector.id, true);
+    expect(await logica.listarSectores()).toHaveLength(1);
+  });
+
+  test('25. RF-22 Error: Nombre de sector vacío o demasiado largo', async () => {
+    await expect(logica.crearSector('   ')).rejects.toThrow('obligatorio');
+    await expect(logica.crearSector('x'.repeat(51))).rejects.toThrow('50 caracteres');
+  });
+
+  test('26. RF-22 Error: Modificar un sector que no existe', async () => {
+    await expect(logica.renombrarSector(9999, 'Nuevo')).rejects.toThrow('Sector no encontrado');
+    await expect(logica.cambiarEstadoSector(9999, false)).rejects.toThrow('Sector no encontrado');
+  });
+
+  test('27. Ciudades: la búsqueda no distingue tildes y muestra la provincia', async () => {
+    const resultado = await logica.buscarCiudades('caceres');
+    expect(resultado).toEqual([expect.objectContaining({ nombre: 'Cáceres', provincia: 'Cáceres' })]);
+  });
+
+  test('28. Ciudades: primero las que empiezan por el texto y como máximo 10', async () => {
+    const resultado = await logica.buscarCiudades('san');
+    expect(resultado.length).toBeLessThanOrEqual(10);
+    expect(resultado[0].nombre.toLowerCase().startsWith('san')).toBe(true);
+    expect(await logica.buscarCiudades('a')).toEqual([]);
+  });
 });

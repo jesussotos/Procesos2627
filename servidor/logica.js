@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const datos = require('./datos');
+const { normalizar } = require('./normalizar');
 require('dotenv').config();
 
 // RNF-02: el secreto JWT solo puede venir del entorno (.env en local, Secret Manager en Cloud Run).
@@ -20,6 +21,29 @@ function errorDe(mensaje, status) {
   const error = new Error(mensaje);
   error.status = status;
   return error;
+}
+
+const LONGITUD_MAXIMA_SECTOR = 50;
+const MAXIMO_CIUDADES_SUGERIDAS = 10;
+
+// Limpia y valida el nombre de un sector; devuelve el nombre a guardar y su forma normalizada
+function validarNombreSector(nombre) {
+  const limpio = typeof nombre === 'string' ? nombre.trim().replace(/\s+/g, ' ') : '';
+  if (!limpio) {
+    throw errorDe('El nombre del sector es obligatorio', 400);
+  }
+  if (limpio.length > LONGITUD_MAXIMA_SECTOR) {
+    throw errorDe(`El nombre del sector no puede superar ${LONGITUD_MAXIMA_SECTOR} caracteres`, 400);
+  }
+  return { nombre: limpio, normalizado: normalizar(limpio) };
+}
+
+async function obtenerSector(id) {
+  const sector = await datos.buscarSectorPorId(id);
+  if (!sector) {
+    throw errorDe('Sector no encontrado', 404);
+  }
+  return sector;
 }
 
 // Adaptador de correo inyectado desde la composición (api.js) o desde las pruebas.
@@ -191,6 +215,57 @@ const logica = {
     await datos.marcarEliminado(usuario.id);
     console.log(`[eliminacion] Cuenta ${usuario.email} eliminada por ${solicitante.email}`);
     return { id: usuario.id, email: usuario.email, estado: 'eliminado' };
+  },
+
+  // --- Sectores (RF-17, RF-22) ---
+
+  // RF-17: sectores activos, para el buscador y los formularios. El administrador puede pedir también los inactivos
+  listarSectores: async ({ incluirInactivos = false } = {}) => {
+    return await datos.listarSectores(!incluirInactivos);
+  },
+
+  // RF-22 + RN-05: no puede haber dos sectores con el mismo nombre sin distinguir mayúsculas ni tildes
+  crearSector: async (nombre) => {
+    const sector = validarNombreSector(nombre);
+    if (await datos.buscarSectorPorNombreNormalizado(sector.normalizado)) {
+      throw errorDe('Ya existe un sector con ese nombre', 409);
+    }
+    const creado = await datos.crearSector(sector);
+    console.log(`[sectores] Sector creado: ${creado.nombre}`);
+    return creado;
+  },
+
+  renombrarSector: async (id, nombre) => {
+    const actual = await obtenerSector(id);
+    const sector = validarNombreSector(nombre);
+    const mismoNombre = await datos.buscarSectorPorNombreNormalizado(sector.normalizado);
+    if (mismoNombre && mismoNombre.id !== actual.id) {
+      throw errorDe('Ya existe un sector con ese nombre', 409);
+    }
+    await datos.renombrarSector(actual.id, sector);
+    return { ...actual, nombre: sector.nombre };
+  },
+
+  // RN-04: desactivar oculta el sector, pero no lo borra (se puede volver a activar)
+  cambiarEstadoSector: async (id, activo) => {
+    if (typeof activo !== 'boolean') {
+      throw errorDe('El campo activo debe ser true o false', 400);
+    }
+    const actual = await obtenerSector(id);
+    await datos.cambiarActivoSector(actual.id, activo);
+    return { ...actual, activo };
+  },
+
+  // --- Ciudades ---
+
+  // Autocompletado: busca sin distinguir mayúsculas ni tildes ("caceres" encuentra "Cáceres").
+  // Con menos de 2 letras no se busca, para no devolver medio catálogo.
+  buscarCiudades: async (texto) => {
+    const normalizado = normalizar(texto);
+    if (normalizado.length < 2) {
+      return [];
+    }
+    return await datos.buscarCiudades(normalizado, MAXIMO_CIUDADES_SUGERIDAS);
   },
 
   // Creación automática del admin usando variables de entorno para mayor seguridad

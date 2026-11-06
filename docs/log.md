@@ -4,6 +4,7 @@ Este bundle documenta el estado comprobable del repositorio; la última actualiz
 
 ## Cronología
 
+- 2026-11-06 · Rama `feat/catalogos`: sectores (RF-17, RF-22, RN-05) y catálogo de 145 ciudades con autocompletado; 28 pruebas.
 - 2026-11-06 · Rama `feat/estado-usuarios`: estado de usuario, rol `profesional`, RF-08, RF-09, RN-08, RN-09 y RN-11; el registro deja de aceptar el rol desde el cliente; 19 pruebas.
 - 2026-11-05 · Rama `chore/cierre-pendientes-sprint1`: se elimina el secreto JWT de respaldo (RNF-02), se documentan la URL pública (RNF-05) y el despliegue continuo (PRO-03) y se corrige la documentación.
 - 2026-11-05 · `32b25cc` · persistencia en Turso con `@libsql/client` (RNF-09), rama `feat/persistencia-produccion`.
