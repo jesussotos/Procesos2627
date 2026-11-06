@@ -1,0 +1,183 @@
+/* ==========================================================================
+   Ficha de un profesional: vista previa en «Mi perfil», ejemplo en el acceso
+   y, más adelante, resultados del buscador y ficha pública.
+   ========================================================================== */
+.ficha {
+  background: var(--superficie);
+  color: var(--tinta);
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  box-shadow: 0 18px 40px -18px rgba(23, 48, 42, 0.35);
+  overflow: hidden;
+}
+
+.ficha-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--linea);
+}
+
+.ficha-cabecera > div:last-child {
+  min-width: 0;
+}
+
+/* Logo del profesional; sin logo, sus iniciales */
+.ficha-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  font-family: var(--serif);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--pino);
+  background: var(--pino-claro);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ficha-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #FFFFFF;
+}
+
+.ficha-logo.con-imagen {
+  border: 1px solid var(--linea);
+  background: #FFFFFF;
+}
+
+/* Fotos de trabajos: tres miniaturas y, si hay más, cuántas quedan */
+.ficha-fotos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ficha-fotos div {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--pino-claro);
+}
+
+.ficha-fotos img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ficha-fotos .mas::after {
+  content: attr(data-mas);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #FFFFFF;
+  background: rgba(23, 48, 42, 0.6);
+}
+
+.ficha-nombre {
+  font-family: var(--serif);
+  font-size: 1.375rem;
+  font-weight: 500;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.ficha-nombre.vacio {
+  color: var(--tenue);
+}
+
+.ficha-zona {
+  margin-top: 4px;
+  font-size: 0.875rem;
+  color: var(--grafito);
+}
+
+.ficha-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 22px 22px;
+}
+
+.ficha-descripcion {
+  font-size: 0.875rem;
+  color: var(--grafito);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.ficha-sectores {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ficha-sectores li {
+  padding-left: 12px;
+  border-left: 2px solid var(--pino);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.ficha-sectores strong {
+  display: block;
+  font-weight: 600;
+}
+
+.ficha-sectores span {
+  color: var(--grafito);
+}
+
+.ficha-contacto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ficha-contacto span {
+  padding: 5px 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--pino);
+  background: var(--pino-claro);
+  border-radius: 999px;
+}
+
+.ficha-precio {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--linea);
+  font-size: 0.875rem;
+  color: var(--grafito);
+}
+
+.ficha-precio strong {
+  font-size: 1.125rem;
+  color: var(--tinta);
+}
+
+.ficha-vacia {
+  font-size: 0.8125rem;
+  color: var(--tenue);
+}

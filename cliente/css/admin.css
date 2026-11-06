@@ -1,0 +1,102 @@
+/* ==========================================================================
+   Administración (admin.html)
+   ========================================================================== */
+.admin-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  font-size: 0.9375rem;
+  color: var(--salvia);
+}
+
+.admin-resumen strong {
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #FFFFFF;
+  margin-right: 6px;
+}
+
+.admin-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 32px;
+  padding-bottom: 96px;
+}
+
+.formulario-linea {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 520px;
+  margin-bottom: 16px;
+}
+
+.formulario-linea input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.tabla-envoltorio {
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.tabla th {
+  padding: 10px 16px 10px 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--grafito);
+  text-align: left;
+  border-bottom: 1px solid var(--linea-fuerte);
+}
+
+.tabla td {
+  padding: 12px 16px 12px 0;
+  border-bottom: 1px solid var(--linea);
+  vertical-align: middle;
+}
+
+.tabla tr:last-child td {
+  border-bottom: none;
+}
+
+.tabla td:last-child,
+.tabla th:last-child {
+  padding-right: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tabla .apagado {
+  color: var(--tenue);
+}
+
+.tabla .rol {
+  color: var(--grafito);
+}
+
+@media (max-width: 760px) {
+  .tabla .col-secundaria {
+    display: none;
+  }
+  .tabla td:first-child {
+    word-break: break-word;
+  }
+  .tabla td:last-child {
+    white-space: normal;
+  }
+  .tabla td:last-child .boton-texto {
+    display: block;
+    margin-left: auto;
+  }
+  .tabla .boton-texto + .boton-texto {
+    margin-left: auto;
+  }
+}

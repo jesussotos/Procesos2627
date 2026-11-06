@@ -46,6 +46,112 @@ async function obtenerSector(id) {
   return sector;
 }
 
+// --- Validación del perfil (RN-10, RNF-10) ---
+
+const LIMITES_PERFIL = {
+  nombreComercial: 80,
+  descripcion: 1000,
+  especialidad: 150,
+  telefono: 20,
+  emailContacto: 254,
+  web: 200,
+  maximoSectores: 10,
+  maximoCiudades: 50
+};
+
+// Texto libre: quita espacios sobrantes y caracteres de control; vacío -> null
+function textoLimpio(valor, campo, maximo, { obligatorio = false, multilinea = false } = {}) {
+  if (valor === undefined || valor === null) valor = '';
+  if (typeof valor !== 'string') {
+    throw errorDe(`El campo ${campo} debe ser un texto`, 400);
+  }
+  let limpio = valor.replace(multilinea ? /[\u0000-\u0009\u000B-\u001F\u007F]/g : /[\u0000-\u001F\u007F]/g, '');
+  limpio = multilinea ? limpio.trim() : limpio.trim().replace(/\s+/g, ' ');
+  if (!limpio) {
+    if (obligatorio) throw errorDe(`El campo ${campo} es obligatorio`, 400);
+    return null;
+  }
+  if (limpio.length > maximo) {
+    throw errorDe(`El campo ${campo} no puede superar ${maximo} caracteres`, 400);
+  }
+  return limpio;
+}
+
+function telefonoValido(valor, campo) {
+  const limpio = textoLimpio(valor, campo, LIMITES_PERFIL.telefono);
+  if (limpio && !/^\+?[0-9 ]{6,19}$/.test(limpio)) {
+    throw errorDe(`El ${campo} solo puede tener números, espacios y un + inicial`, 400);
+  }
+  return limpio;
+}
+
+function emailValido(valor) {
+  const limpio = textoLimpio(valor, 'email de contacto', LIMITES_PERFIL.emailContacto);
+  if (limpio && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(limpio)) {
+    throw errorDe('El email de contacto no tiene un formato válido', 400);
+  }
+  return limpio;
+}
+
+// La web se guarda siempre con http(s)://; sin protocolo se añade https://
+function webValida(valor) {
+  let limpio = textoLimpio(valor, 'web', LIMITES_PERFIL.web);
+  if (!limpio) return null;
+  if (!/^https?:\/\//i.test(limpio)) limpio = `https://${limpio}`;
+  let url;
+  try {
+    url = new URL(limpio);
+  } catch (error) {
+    throw errorDe('La web no tiene un formato válido', 400);
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.')) {
+    throw errorDe('La web no tiene un formato válido', 400);
+  }
+  return limpio;
+}
+
+function idValido(valor) {
+  return Number.isInteger(valor) && valor > 0;
+}
+
+// --- Imágenes (RF-23) ---
+
+const LIMITES_IMAGEN = {
+  bytes: 600 * 1024, // el navegador reduce la imagen antes de subirla
+  fotos: 8
+};
+
+// Reconoce el formato por los primeros bytes del archivo, no por lo que diga el cliente
+function formatoDeImagen(datos) {
+  if (!Buffer.isBuffer(datos) || datos.length < 12) return null;
+  if (datos[0] === 0xFF && datos[1] === 0xD8 && datos[2] === 0xFF) return 'image/jpeg';
+  if (datos.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))) return 'image/png';
+  if (datos.subarray(0, 4).toString('latin1') === 'RIFF' && datos.subarray(8, 12).toString('latin1') === 'WEBP') return 'image/webp';
+  return null;
+}
+
+function validarImagen(datos) {
+  const mime = formatoDeImagen(datos);
+  if (!mime) {
+    throw errorDe('El archivo debe ser una imagen JPG, PNG o WebP', 400);
+  }
+  if (datos.length > LIMITES_IMAGEN.bytes) {
+    throw errorDe('La imagen es demasiado grande (máximo 600 KB)', 413);
+  }
+  return mime;
+}
+
+function urlImagen(id) {
+  return `/api/imagenes/${id}`;
+}
+
+// RN-02: solo un profesional tiene perfil, y solo puede tocar el suyo (el id sale siempre de la sesión)
+function exigirProfesional(usuario) {
+  if (!usuario || usuario.rol !== 'profesional') {
+    throw errorDe('Solo los profesionales tienen perfil', 403);
+  }
+}
+
 // Adaptador de correo inyectado desde la composición (api.js) o desde las pruebas.
 // Debe ofrecer: enviarConfirmacion(email, token)
 let correo = null;
@@ -80,7 +186,9 @@ const logica = {
     };
 
     if (existe) {
-      // Cuando exista el perfil profesional, aquí se descartará el perfil anterior
+      // D-17: la cuenta vuelve a empezar de cero, sin el perfil ni las imágenes de antes
+      await datos.borrarPerfilDeUsuario(existe.id);
+      await datos.borrarImagenesDeUsuario(existe.id);
       await datos.reactivar(existe.id, datosCuenta);
     } else {
       await datos.guardar(datosCuenta);
@@ -266,6 +374,159 @@ const logica = {
       return [];
     }
     return await datos.buscarCiudades(normalizado, MAXIMO_CIUDADES_SUGERIDAS);
+  },
+
+  // --- Perfil del profesional (RF-11, RF-12, RF-13) ---
+
+  // Devuelve el perfil del propio profesional; si aún no lo ha creado, uno vacío con existe: false
+  obtenerPerfil: async (usuario) => {
+    exigirProfesional(usuario);
+    const perfil = await datos.buscarPerfilPorUsuario(usuario.id);
+    const imagenes = await datos.imagenesDeUsuario(usuario.id);
+    const logo = imagenes.find((i) => i.tipo === 'logo');
+    const conImagenes = {
+      logo: logo ? { id: logo.id, url: urlImagen(logo.id) } : null,
+      fotos: imagenes.filter((i) => i.tipo === 'trabajo').map((i) => ({ id: i.id, url: urlImagen(i.id) }))
+    };
+    if (!perfil) {
+      return {
+        existe: false, nombreComercial: '', descripcion: '', telefono: '', emailContacto: '',
+        web: '', whatsapp: '', actualizado: null, sectores: [], ciudades: [], ...conImagenes
+      };
+    }
+    return {
+      ...conImagenes,
+      existe: true,
+      nombreComercial: perfil.nombre_comercial,
+      descripcion: perfil.descripcion || '',
+      telefono: perfil.telefono || '',
+      emailContacto: perfil.email_contacto || '',
+      web: perfil.web || '',
+      whatsapp: perfil.whatsapp || '',
+      actualizado: perfil.actualizado,
+      sectores: await datos.sectoresDePerfil(perfil.id),
+      ciudades: await datos.ciudadesDePerfil(perfil.id)
+    };
+  },
+
+  // Crea o edita el perfil completo. Valida todo antes de escribir nada.
+  // Cuerpo: { nombreComercial, descripcion, telefono, emailContacto, web, whatsapp,
+  //           sectores: [{ sectorId, especialidad }], ciudades: [ciudadId] }
+  guardarPerfil: async (usuario, entrada = {}) => {
+    exigirProfesional(usuario);
+
+    // RF-11 + RN-10: datos básicos
+    const basicos = {
+      nombreComercial: textoLimpio(entrada.nombreComercial, 'nombre comercial', LIMITES_PERFIL.nombreComercial, { obligatorio: true }),
+      descripcion: textoLimpio(entrada.descripcion, 'descripción', LIMITES_PERFIL.descripcion, { multilinea: true }),
+      telefono: telefonoValido(entrada.telefono, 'teléfono'),
+      emailContacto: emailValido(entrada.emailContacto),
+      web: webValida(entrada.web),
+      whatsapp: telefonoValido(entrada.whatsapp, 'WhatsApp')
+    };
+    // RNF-11: el email de contacto es aparte del de acceso; debe haber al menos un medio de contacto
+    if (!basicos.telefono && !basicos.emailContacto && !basicos.web && !basicos.whatsapp) {
+      throw errorDe('Indica al menos un dato de contacto: teléfono, email, web o WhatsApp', 400);
+    }
+
+    const perfilActual = await datos.buscarPerfilPorUsuario(usuario.id);
+    const sectoresActuales = perfilActual ? await datos.sectoresDePerfil(perfilActual.id) : [];
+
+    // RF-12 + RN-04: sectores del catálogo, sin repetir, con especialidad
+    const listaSectores = entrada.sectores ?? [];
+    if (!Array.isArray(listaSectores)) throw errorDe('Los sectores deben ser una lista', 400);
+    if (listaSectores.length > LIMITES_PERFIL.maximoSectores) {
+      throw errorDe(`Puedes elegir como máximo ${LIMITES_PERFIL.maximoSectores} sectores`, 400);
+    }
+    const sectores = [];
+    for (const elegido of listaSectores) {
+      const sectorId = elegido && elegido.sectorId;
+      if (!idValido(sectorId)) throw errorDe('Sector no válido', 400);
+      if (sectores.some((s) => s.sectorId === sectorId)) throw errorDe('No puedes elegir el mismo sector dos veces', 400);
+      const sector = await datos.buscarSectorPorId(sectorId);
+      if (!sector) throw errorDe('Sector no válido', 400);
+      // Un sector desactivado no se puede añadir, pero si ya lo tenías puedes conservarlo
+      const yaLoTenia = sectoresActuales.some((s) => s.id === sectorId);
+      if (!sector.activo && !yaLoTenia) {
+        throw errorDe(`El sector ${sector.nombre} no está disponible`, 400);
+      }
+      const especialidad = textoLimpio(elegido.especialidad, `especialidad de ${sector.nombre}`,
+        LIMITES_PERFIL.especialidad, { obligatorio: true });
+      sectores.push({ sectorId, especialidad });
+    }
+
+    // RF-13 + RN-07: ciudades del catálogo y sin repetir
+    const listaCiudades = entrada.ciudades ?? [];
+    if (!Array.isArray(listaCiudades)) throw errorDe('Las ciudades deben ser una lista', 400);
+    if (listaCiudades.length > LIMITES_PERFIL.maximoCiudades) {
+      throw errorDe(`Puedes elegir como máximo ${LIMITES_PERFIL.maximoCiudades} ciudades`, 400);
+    }
+    const ciudades = [];
+    for (const ciudadId of listaCiudades) {
+      if (!idValido(ciudadId) || !(await datos.buscarCiudadPorId(ciudadId))) {
+        throw errorDe('La ciudad elegida no existe en el catálogo', 400);
+      }
+      if (ciudades.includes(ciudadId)) throw errorDe('No puedes elegir la misma ciudad dos veces', 400);
+      ciudades.push(ciudadId);
+    }
+
+    // Todo es válido: se escribe
+    const perfilId = await datos.guardarPerfil(usuario.id, basicos);
+    // RN-03 (paso 5): al quitar un sector se borrarán también sus servicios
+    await datos.reemplazarSectoresPerfil(perfilId, sectores);
+    await datos.reemplazarCiudadesPerfil(perfilId, ciudades);
+    console.log(`[perfil] Perfil de ${usuario.email} guardado`);
+    return await logica.obtenerPerfil(usuario);
+  },
+
+  // --- Logo y fotos de trabajos (RF-23, opcionales) ---
+
+  // Sube o sustituye el logo del profesional
+  subirLogo: async (usuario, contenido) => {
+    exigirProfesional(usuario);
+    const mime = validarImagen(contenido);
+    await datos.borrarLogo(usuario.id);
+    const id = await datos.guardarImagen({ usuarioId: usuario.id, tipo: 'logo', mime, datos: contenido });
+    return { id, url: urlImagen(id) };
+  },
+
+  quitarLogo: async (usuario) => {
+    exigirProfesional(usuario);
+    await datos.borrarLogo(usuario.id);
+  },
+
+  // Añade una foto de trabajos; como mucho LIMITES_IMAGEN.fotos por profesional
+  subirFoto: async (usuario, contenido) => {
+    exigirProfesional(usuario);
+    const mime = validarImagen(contenido);
+    const fotos = (await datos.imagenesDeUsuario(usuario.id)).filter((i) => i.tipo === 'trabajo');
+    if (fotos.length >= LIMITES_IMAGEN.fotos) {
+      throw errorDe(`Puedes publicar como máximo ${LIMITES_IMAGEN.fotos} fotos`, 400);
+    }
+    const id = await datos.guardarImagen({ usuarioId: usuario.id, tipo: 'trabajo', mime, datos: contenido });
+    return { id, url: urlImagen(id) };
+  },
+
+  // RN-02: solo se pueden borrar las fotos propias
+  quitarFoto: async (usuario, id) => {
+    exigirProfesional(usuario);
+    const imagen = await datos.buscarImagen(id);
+    if (!imagen || imagen.tipo !== 'trabajo') {
+      throw errorDe('Foto no encontrada', 404);
+    }
+    if (imagen.usuario_id !== usuario.id) {
+      throw errorDe('No puedes borrar una foto de otro profesional', 403);
+    }
+    await datos.borrarImagen(id);
+  },
+
+  // Imagen pública para la ficha. RN-08: las de cuentas no activas no se sirven
+  obtenerImagen: async (id) => {
+    const imagen = await datos.buscarImagen(id);
+    if (!imagen || imagen.estado !== 'activo') {
+      throw errorDe('Imagen no encontrada', 404);
+    }
+    return { mime: imagen.mime, datos: imagen.datos };
   },
 
   // Creación automática del admin usando variables de entorno para mayor seguridad

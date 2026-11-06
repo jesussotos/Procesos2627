@@ -256,4 +256,192 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     expect(resultado[0].nombre.toLowerCase().startsWith('san')).toBe(true);
     expect(await logica.buscarCiudades('a')).toEqual([]);
   });
+
+  // --- Sprint 2: perfil del profesional ---
+
+  async function idCiudad(nombre) {
+    const [ciudad] = await logica.buscarCiudades(nombre);
+    return ciudad.id;
+  }
+
+  // Perfil mínimo válido para un profesional, al que cada prueba cambia lo que necesite
+  async function perfilBase() {
+    const fontaneria = await logica.crearSector('Fontanería');
+    return {
+      nombreComercial: 'Fontanería Pérez',
+      descripcion: 'Reparaciones urgentes.\nPresupuesto sin compromiso.',
+      telefono: '+34 600 111 222',
+      sectores: [{ sectorId: fontaneria.id, especialidad: 'Calderas y calentadores' }],
+      ciudades: [await idCiudad('cáceres')]
+    };
+  }
+
+  test('29. RF-11/12/13: Un profesional crea su perfil y lo consulta', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    expect((await logica.obtenerPerfil(usuario)).existe).toBe(false);
+
+    const entrada = await perfilBase();
+    entrada.web = 'fontaneriaperez.es';
+    const perfil = await logica.guardarPerfil(usuario, entrada);
+
+    expect(perfil.existe).toBe(true);
+    expect(perfil.nombreComercial).toBe('Fontanería Pérez');
+    expect(perfil.descripcion).toBe('Reparaciones urgentes.\nPresupuesto sin compromiso.');
+    expect(perfil.web).toBe('https://fontaneriaperez.es');
+    expect(perfil.sectores).toEqual([expect.objectContaining({ nombre: 'Fontanería', especialidad: 'Calderas y calentadores' })]);
+    expect(perfil.ciudades).toEqual([expect.objectContaining({ nombre: 'Cáceres', provincia: 'Cáceres' })]);
+  });
+
+  test('30. RF-12/13: Editar el perfil sustituye sus sectores y ciudades', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    const entrada = await perfilBase();
+    await logica.guardarPerfil(usuario, entrada);
+
+    const pintura = await logica.crearSector('Pintura');
+    entrada.sectores = [{ sectorId: pintura.id, especialidad: 'Interiores' }];
+    entrada.ciudades = [await idCiudad('vigo'), await idCiudad('lugo')];
+    const perfil = await logica.guardarPerfil(usuario, entrada);
+
+    expect(perfil.sectores.map(s => s.nombre)).toEqual(['Pintura']);
+    expect(perfil.ciudades.map(c => c.nombre)).toEqual(['Lugo', 'Vigo']);
+  });
+
+  test('31. RN-04 Error: No se puede elegir un sector desactivado', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    const entrada = await perfilBase();
+    const mudanzas = await logica.crearSector('Mudanzas');
+    await logica.cambiarEstadoSector(mudanzas.id, false);
+    entrada.sectores.push({ sectorId: mudanzas.id, especialidad: 'Pisos' });
+    await expect(logica.guardarPerfil(usuario, entrada)).rejects.toThrow('no está disponible');
+  });
+
+  test('32. RN-04: Un sector que ya tenías y se desactiva se puede conservar al editar', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    const entrada = await perfilBase();
+    await logica.guardarPerfil(usuario, entrada);
+    await logica.cambiarEstadoSector(entrada.sectores[0].sectorId, false);
+
+    entrada.nombreComercial = 'Fontanería Pérez e Hijos';
+    const perfil = await logica.guardarPerfil(usuario, entrada);
+    expect(perfil.sectores).toEqual([expect.objectContaining({ nombre: 'Fontanería', activo: false })]);
+  });
+
+  test('33. RN-07 Error: Ciudad que no está en el catálogo o repetida', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    const entrada = await perfilBase();
+    entrada.ciudades = [999999];
+    await expect(logica.guardarPerfil(usuario, entrada)).rejects.toThrow('no existe en el catálogo');
+    const madrid = await idCiudad('madrid');
+    entrada.ciudades = [madrid, madrid];
+    await expect(logica.guardarPerfil(usuario, entrada)).rejects.toThrow('misma ciudad dos veces');
+  });
+
+  test('34. RN-10 Error: Textos más largos de lo permitido', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    const entrada = await perfilBase();
+    await expect(logica.guardarPerfil(usuario, { ...entrada, nombreComercial: 'x'.repeat(81) })).rejects.toThrow('80 caracteres');
+    await expect(logica.guardarPerfil(usuario, { ...entrada, descripcion: 'x'.repeat(1001) })).rejects.toThrow('1000 caracteres');
+    entrada.sectores[0].especialidad = 'x'.repeat(151);
+    await expect(logica.guardarPerfil(usuario, entrada)).rejects.toThrow('150 caracteres');
+  });
+
+  test('35. RF-11/12 Error: Faltan el nombre comercial o la especialidad', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    const entrada = await perfilBase();
+    await expect(logica.guardarPerfil(usuario, { ...entrada, nombreComercial: '   ' })).rejects.toThrow('nombre comercial es obligatorio');
+    entrada.sectores[0].especialidad = '';
+    await expect(logica.guardarPerfil(usuario, entrada)).rejects.toThrow('especialidad de Fontanería es obligatorio');
+  });
+
+  test('36. RF-11 Error: Hace falta al menos un dato de contacto válido', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    const entrada = await perfilBase();
+    delete entrada.telefono;
+    await expect(logica.guardarPerfil(usuario, entrada)).rejects.toThrow('al menos un dato de contacto');
+    await expect(logica.guardarPerfil(usuario, { ...entrada, emailContacto: 'no-es-un-email' })).rejects.toThrow('formato válido');
+    await expect(logica.guardarPerfil(usuario, { ...entrada, telefono: '600-abc' })).rejects.toThrow('solo puede tener números');
+  });
+
+  test('37. RN-02: Cada profesional solo ve y edita su propio perfil; el admin no tiene perfil', async () => {
+    const { usuario: ana } = await crearSesion('ana@example.com');
+    const { usuario: luis } = await crearSesion('luis@example.com');
+    const { usuario: admin } = await crearSesion('jefe@example.com', 'admin');
+    await logica.guardarPerfil(ana, await perfilBase());
+
+    expect((await logica.obtenerPerfil(luis)).existe).toBe(false);
+    await expect(logica.obtenerPerfil(admin)).rejects.toThrow('Solo los profesionales tienen perfil');
+  });
+
+  test('38. D-17: Al reactivar una cuenta eliminada, el perfil anterior se descarta', async () => {
+    const { usuario } = await crearSesion('vuelve@example.com');
+    await logica.guardarPerfil(usuario, await perfilBase());
+    await logica.eliminarUsuario(usuario, usuario.id);
+
+    await logica.registrarUsuario('vuelve@example.com', 'nueva123');
+    await logica.confirmarCuenta(correo.ultimoToken());
+    expect((await logica.obtenerPerfil(usuario)).existe).toBe(false);
+  });
+
+  // --- Sprint 2: logo y fotos de trabajos (RF-23) ---
+
+  // Bastan los primeros bytes de cada formato: el servidor no decodifica la imagen
+  const JPG = (bytes = 200) => Buffer.concat([Buffer.from([0xFF, 0xD8, 0xFF, 0xE0]), Buffer.alloc(bytes)]);
+  const PNG = () => Buffer.concat([Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]), Buffer.alloc(200)]);
+
+  test('39. RF-23: El profesional sube su logo y aparece en su perfil; uno nuevo sustituye al anterior', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    const primero = await logica.subirLogo(usuario, PNG());
+    const segundo = await logica.subirLogo(usuario, JPG());
+    const perfil = await logica.obtenerPerfil(usuario);
+    expect(perfil.logo).toEqual({ id: segundo.id, url: `/api/imagenes/${segundo.id}` });
+    await expect(logica.obtenerImagen(primero.id)).rejects.toThrow('Imagen no encontrada');
+    expect((await logica.obtenerImagen(segundo.id)).mime).toBe('image/jpeg');
+
+    await logica.quitarLogo(usuario);
+    expect((await logica.obtenerPerfil(usuario)).logo).toBeNull();
+  });
+
+  test('40. RF-23: Fotos de trabajos opcionales, como máximo 8', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    expect((await logica.obtenerPerfil(usuario)).fotos).toEqual([]);
+    for (let i = 0; i < 8; i++) await logica.subirFoto(usuario, JPG());
+    expect((await logica.obtenerPerfil(usuario)).fotos).toHaveLength(8);
+    await expect(logica.subirFoto(usuario, JPG())).rejects.toThrow('como máximo 8 fotos');
+  });
+
+  test('41. RF-23 Error: Solo se aceptan imágenes JPG, PNG o WebP de hasta 600 KB', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    await expect(logica.subirFoto(usuario, Buffer.from('<script>alert(1)</script>'))).rejects.toThrow('JPG, PNG o WebP');
+    await expect(logica.subirFoto(usuario, undefined)).rejects.toThrow('JPG, PNG o WebP');
+    await expect(logica.subirLogo(usuario, JPG(600 * 1024))).rejects.toThrow('demasiado grande');
+  });
+
+  test('42. RN-02 Error: Un profesional no puede borrar las fotos de otro', async () => {
+    const { usuario: ana } = await crearSesion('ana@example.com');
+    const { usuario: luis } = await crearSesion('luis@example.com');
+    const foto = await logica.subirFoto(ana, JPG());
+    await expect(logica.quitarFoto(luis, foto.id)).rejects.toThrow('otro profesional');
+    await logica.quitarFoto(ana, foto.id);
+    expect((await logica.obtenerPerfil(ana)).fotos).toEqual([]);
+  });
+
+  test('43. RN-08: Las imágenes de una cuenta eliminada dejan de servirse', async () => {
+    const { usuario } = await crearSesion('baja@example.com');
+    const foto = await logica.subirFoto(usuario, JPG());
+    expect((await logica.obtenerImagen(foto.id)).datos.length).toBeGreaterThan(0);
+    await logica.eliminarUsuario(usuario, usuario.id);
+    await expect(logica.obtenerImagen(foto.id)).rejects.toThrow('Imagen no encontrada');
+  });
+
+  test('44. D-17: Al reactivar la cuenta se borran las imágenes anteriores', async () => {
+    const { usuario } = await crearSesion('vuelve@example.com');
+    await logica.subirLogo(usuario, PNG());
+    await logica.subirFoto(usuario, JPG());
+    await logica.eliminarUsuario(usuario, usuario.id);
+    await logica.registrarUsuario('vuelve@example.com', 'nueva123');
+    await logica.confirmarCuenta(correo.ultimoToken());
+    const perfil = await logica.obtenerPerfil(usuario);
+    expect(perfil.logo).toBeNull();
+    expect(perfil.fotos).toEqual([]);
+  });
 });

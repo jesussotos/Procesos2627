@@ -1,0 +1,140 @@
+/* ==========================================================================
+   Página de acceso (index.html): mensaje para el profesional y formulario
+   ========================================================================== */
+.acceso {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  min-height: calc(100vh - 60px);
+}
+
+.acceso-portada {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 40px;
+  padding: 64px 64px 64px max(24px, calc((100vw - 1120px) / 2 + 24px));
+  background: var(--pino-profundo);
+  color: #FFFFFF;
+}
+
+.acceso-portada h1 {
+  max-width: 15ch;
+  font-family: var(--serif);
+  font-size: clamp(2.25rem, 4.2vw, 3.5rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.acceso-portada > div > p {
+  max-width: 44ch;
+  margin-top: 20px;
+  font-size: 1.0625rem;
+  color: var(--salvia);
+}
+
+.acceso-ejemplo {
+  max-width: 380px;
+}
+
+.acceso-ejemplo > p {
+  margin-bottom: 10px;
+  font-size: 0.8125rem;
+  color: var(--salvia);
+}
+
+.acceso-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: var(--superficie);
+}
+
+.acceso-formulario {
+  width: 100%;
+  max-width: 360px;
+}
+
+.acceso-formulario h2 {
+  margin-bottom: 6px;
+  font-family: var(--serif);
+  font-size: 1.625rem;
+  font-weight: 500;
+}
+
+.acceso-formulario .intro {
+  margin-bottom: 24px;
+  font-size: 0.9375rem;
+  color: var(--grafito);
+}
+
+.acceso-formulario form .btn {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.acceso-sesion {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Pestañas: iniciar sesión / crear cuenta */
+.tabs {
+  display: flex;
+  gap: 28px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--linea);
+}
+
+.tab-btn {
+  padding: 10px 0;
+  margin-bottom: -1px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--grafito);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.tab-btn:hover {
+  color: var(--tinta);
+}
+
+.tab-btn.active {
+  color: var(--tinta);
+  border-bottom-color: var(--pino);
+}
+
+.form-panel {
+  display: none;
+}
+
+.form-panel.active {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .acceso {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .acceso-portada {
+    padding: 40px 16px;
+    gap: 28px;
+  }
+  /* En el móvil lo primero es poder entrar: la ficha de ejemplo se oculta */
+  .acceso-ejemplo {
+    display: none;
+  }
+  .acceso-panel {
+    align-items: flex-start;
+    padding: 36px 16px 64px;
+  }
+}

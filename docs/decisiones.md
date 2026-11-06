@@ -87,4 +87,30 @@ Las decisiones D-07 a D-13 del dominio del Sprint 2 están en la especificación
 - **Por qué:** RN-05 debe cumplirse aunque dos peticiones lleguen a la vez; la lógica da el mensaje de error y la base de datos es la última barrera.
 - **Estado:** vigente.
 
+## D-21: El perfil se guarda completo en una sola petición
+
+- **Qué se decidió:** `PUT /api/perfil` recibe a la vez los datos del negocio, los sectores con su especialidad y las ciudades, y sustituye las listas enteras. La ruta no lleva id: el perfil siempre es el del usuario de la sesión.
+- **Por qué:** La página tiene un solo botón «Guardar perfil»; validar todo antes de escribir evita perfiles a medias. Sin id en la ruta, RN-02 se cumple por construcción.
+- **Estado:** vigente.
+
+## D-22: Conservar un sector desactivado que el profesional ya tenía
+
+- **Qué se decidió:** Un profesional no puede añadir un sector desactivado (RN-04), pero si ya lo tenía puede seguir guardando su perfil sin perderlo.
+- **Por qué:** Si el administrador desactiva un sector, obligar a quitarlo para poder editar cualquier otro dato borraría además sus servicios (RN-03). El sector ya queda oculto del buscador.
+- **Estado:** vigente.
+
+## D-23: Identidad visual en verde pino, sobria y minimalista
+
+- **Qué se decidió:** Sustituir la estética del Sprint 1 (tarjeta centrada sobre gris y azul genérico) por una identidad propia: el verde pino (`#24493D`, y `#17302A` en la barra y las cabeceras) como color de marca, fondo salvia muy suave con bloques blancos, la serif Lora solo para la marca y los títulos y la fuente del sistema para el resto. La página de acceso se dirige al profesional y le enseña una ficha de ejemplo; «Mi perfil» muestra una vista previa en vivo de su ficha y el progreso de lo que le falta. La marca provisional es «Oficios».
+- **Por qué:** Los profesionales tienen que querer publicar su ficha y los clientes tienen que fiarse de ella: la interfaz debe transmitir seriedad sin resultar fría. Un único color de marca y pocos elementos mantienen la atención en el contenido.
+- **Organización:** Los estilos se reparten en `cliente/css/` (`base.css` común, `ficha.css` para la ficha reutilizable y uno por página) y el JavaScript de cada página está en su propio archivo (`perfil.js`, `admin.js`), de modo que los HTML solo contienen estructura.
+- **Estado:** vigente.
+
+## D-24: Logo y fotos de trabajos guardados en la base de datos
+
+- **Qué se decidió:** Permitir al profesional publicar, de forma opcional, el logo de su empresa y hasta 8 fotos de sus trabajos (RF-23). Las imágenes se guardan en la propia base de datos (Turso), en una tabla `imagenes` con el contenido en un `BLOB`, y se sirven desde `GET /api/imagenes/:id`. El navegador las reduce antes de subirlas (logo a 512 px en WebP, fotos a 1.600 px en JPG) y el servidor acepta como máximo 600 KB por imagen.
+- **Por qué:** Es una ampliación del alcance pedida para que las fichas resulten más profesionales y den confianza. La especificación dejaba fuera la subida de imágenes porque el disco de Cloud Run es efímero; guardarlas en Turso, que ya es persistente, evita ese problema sin añadir otro servicio (como Cloud Storage) ni dependencias nuevas. Con los límites de tamaño y número, el espacio que ocupan es pequeño frente a los 5 GB del plan gratuito.
+- **Consecuencias:** Cada imagen pasa por el servidor y la base de datos; con mucho tráfico convendría un almacenamiento de objetos con CDN. El formato se valida por los primeros bytes del archivo y las imágenes de cuentas eliminadas dejan de servirse (RN-08).
+- **Estado:** vigente. Sustituye a la exclusión de «Subida de imágenes o logotipos» del apartado 8 de la especificación del Sprint 2.
+
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**

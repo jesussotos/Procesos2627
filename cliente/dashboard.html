@@ -3,80 +3,173 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi cuenta - SaaS</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Mi perfil · Oficios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&display=swap">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/ficha.css">
+  <link rel="stylesheet" href="css/perfil.css">
 </head>
 <body>
 
-  <main class="card">
-    <div class="brand">
-      <h2>Panel de Usuario</h2>
-      <p id="user-info">Comprobando sesión...</p>
+  <header class="barra">
+    <div class="contenedor">
+      <a class="marca" href="/dashboard.html">Oficios</a>
+      <div class="barra-sesion">
+        <span id="user-info">Comprobando sesión...</span>
+        <button id="btn-logout" class="boton-texto" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="banda">
+    <div class="contenedor">
+      <div>
+        <h1 class="titulo">Mi perfil</h1>
+        <p class="subtitulo">Lo que escribas aquí forma tu ficha pública: es lo que verán los clientes cuando busquen un profesional en su ciudad.</p>
+      </div>
+      <div class="progreso" aria-live="polite">
+        <p class="progreso-titulo" id="progreso-titulo"></p>
+        <div class="progreso-barra"><span id="progreso-barra"></span></div>
+        <ul id="progreso-lista"></ul>
+      </div>
+    </div>
+  </section>
+
+  <main class="contenedor perfil-cuerpo">
+    <div class="perfil-formulario">
+      <div id="mensaje" class="alert" role="status"></div>
+
+      <form id="form-perfil" class="perfil-formulario" novalidate>
+        <section class="panel">
+          <div class="panel-cabecera">
+            <h2>Tu negocio</h2>
+            <p>El nombre con el que te conocen tus clientes y una breve presentación.</p>
+          </div>
+          <div class="campos">
+            <div class="form-group">
+              <label for="nombre-comercial">Nombre comercial</label>
+              <input id="nombre-comercial" type="text" maxlength="80" required>
+            </div>
+            <div class="form-group">
+              <label for="descripcion">Descripción</label>
+              <textarea id="descripcion" maxlength="1000" rows="5" placeholder="Experiencia, forma de trabajar, horario..."></textarea>
+              <small class="ayuda"><span id="contador-descripcion">0</span> de 1000 caracteres</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-cabecera">
+            <h2>Logo y fotos</h2>
+            <p>Opcional. Dan confianza y hacen tu ficha más profesional. Se publican en cuanto las subes.</p>
+          </div>
+          <div class="imagenes">
+            <div class="imagenes-bloque">
+              <h3>Logo de tu empresa</h3>
+              <div class="subida-logo">
+                <div class="logo-actual" id="logo-actual"></div>
+                <div class="acciones-imagen">
+                  <div>
+                    <label class="btn btn-secondary" for="archivo-logo" id="boton-logo">Subir logo</label>
+                    <button type="button" class="boton-texto peligro" id="quitar-logo" hidden>Quitar</button>
+                  </div>
+                  <p class="ayuda">JPG, PNG o WebP. Mejor cuadrado.</p>
+                </div>
+                <input type="file" id="archivo-logo" accept="image/jpeg,image/png,image/webp" hidden>
+              </div>
+            </div>
+            <div class="imagenes-bloque">
+              <h3>Fotos de tus trabajos</h3>
+              <div class="galeria-edicion" id="galeria"></div>
+              <input type="file" id="archivo-fotos" accept="image/jpeg,image/png,image/webp" multiple hidden>
+              <p class="ayuda" id="contador-fotos"></p>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-cabecera">
+            <h2>Contacto</h2>
+            <p>Rellena al menos uno. Tu correo de acceso no se muestra nunca.</p>
+          </div>
+          <div class="rejilla">
+            <div class="form-group">
+              <label for="telefono">Teléfono</label>
+              <input id="telefono" type="tel" maxlength="20" autocomplete="tel">
+            </div>
+            <div class="form-group">
+              <label for="whatsapp">WhatsApp</label>
+              <input id="whatsapp" type="tel" maxlength="20">
+            </div>
+            <div class="form-group">
+              <label for="email-contacto">Correo de contacto</label>
+              <input id="email-contacto" type="email" maxlength="254">
+            </div>
+            <div class="form-group">
+              <label for="web">Web</label>
+              <input id="web" type="text" maxlength="200" placeholder="minegocio.es">
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-cabecera">
+            <h2>Sectores</h2>
+            <p>Marca los oficios en los que trabajas y describe tu especialidad en cada uno.</p>
+          </div>
+          <div id="lista-sectores" class="lista-sectores"><p class="ayuda">Cargando sectores...</p></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-cabecera">
+            <h2>Zona de actuación</h2>
+            <p>Ciudades a las que te desplazas para trabajar.</p>
+          </div>
+          <div class="campos">
+            <div class="form-group buscador-ciudad">
+              <label for="buscar-ciudad">Añadir ciudad</label>
+              <input id="buscar-ciudad" type="text" autocomplete="off" placeholder="Escribe al menos 2 letras">
+              <ul id="sugerencias" class="sugerencias" role="listbox" hidden></ul>
+            </div>
+            <div id="ciudades-elegidas" class="chips"></div>
+          </div>
+        </section>
+
+        <div class="pie-formulario">
+          <p id="actualizado" class="ayuda"></p>
+          <button type="submit" class="btn btn-primary" id="btn-guardar">Guardar perfil</button>
+        </div>
+      </form>
+
+      <section class="panel zona-cuenta">
+        <p>Si eliminas tu cuenta, tu ficha deja de mostrarse. Podrás volver a registrarte con el mismo correo.</p>
+        <button id="btn-eliminar" class="btn btn-peligro" type="button">Eliminar mi cuenta</button>
+      </section>
     </div>
 
-    <div id="mensaje" class="alert"></div>
-
-    <button id="btn-logout" class="btn btn-secondary">Cerrar Sesión</button>
-    <button id="btn-eliminar" class="btn btn-secondary" style="margin-top: 12px; color: #dc2626; border-color: #fecaca;">Eliminar mi cuenta</button>
+    <aside class="vista-previa">
+      <p>Así te verán los clientes</p>
+      <article class="ficha">
+        <div class="ficha-cabecera">
+          <div class="ficha-logo" id="previa-logo"></div>
+          <div>
+            <h3 class="ficha-nombre" id="previa-nombre"></h3>
+            <p class="ficha-zona" id="previa-zona"></p>
+          </div>
+        </div>
+        <div class="ficha-cuerpo">
+          <div class="ficha-fotos" id="previa-fotos" hidden></div>
+          <p class="ficha-descripcion" id="previa-descripcion"></p>
+          <ul class="ficha-sectores" id="previa-sectores"></ul>
+          <div class="ficha-contacto" id="previa-contacto"></div>
+          <p class="ficha-precio ficha-vacia">Tus servicios y precios aparecerán aquí.</p>
+        </div>
+      </article>
+    </aside>
   </main>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      const token = localStorage.getItem('jwt_token');
-      const userInfo = document.getElementById('user-info');
-      const mensajeDiv = document.getElementById('mensaje');
-
-      function cerrarSesion() {
-        localStorage.removeItem('jwt_token');
-        localStorage.removeItem('rol');
-        window.location.href = '/index.html';
-      }
-
-      document.getElementById('btn-logout').addEventListener('click', cerrarSesion);
-
-      // RF-09: el profesional elimina su propia cuenta (borrado lógico)
-      document.getElementById('btn-eliminar').addEventListener('click', async () => {
-        if (!confirm('¿Seguro que quieres eliminar tu cuenta? Podrás volver a registrarte con el mismo correo.')) return;
-        try {
-          const res = await fetch('/api/usuarios/me', {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'No se pudo eliminar la cuenta');
-          localStorage.removeItem('jwt_token');
-          localStorage.removeItem('rol');
-          window.location.href = '/index.html?cuenta=eliminada';
-        } catch (error) {
-          mensajeDiv.style.display = 'block';
-          mensajeDiv.textContent = error.message;
-        }
-      });
-
-      // Sin token no hay sesión: vuelta al inicio
-      if (!token) {
-        window.location.href = '/index.html';
-        return;
-      }
-
-      // El servidor decide si la sesión sigue siendo válida
-      try {
-        const res = await fetch('/api/usuarios/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          userInfo.textContent = `Sesión iniciada como: ${data.usuario.email} (${data.usuario.rol})`;
-        } else {
-          // Token caducado o inválido
-          cerrarSesion();
-        }
-      } catch (error) {
-        mensajeDiv.style.display = 'block';
-        mensajeDiv.textContent = 'Error al conectar con el servidor';
-      }
-    });
-  </script>
+  <script src="perfil.js"></script>
 </body>
 </html>
