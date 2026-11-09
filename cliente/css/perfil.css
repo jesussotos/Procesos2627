@@ -346,6 +346,167 @@
   pointer-events: none;
 }
 
+/* Servicios */
+.panel-cabecera-accion {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.lista-servicios {
+  border-top: 1px solid var(--linea);
+}
+
+.servicio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 4px 24px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--linea);
+}
+
+.servicio-info strong {
+  display: block;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.servicio-info span {
+  font-size: 0.8125rem;
+  color: var(--grafito);
+}
+
+.servicio-precio {
+  text-align: right;
+}
+
+.servicio-precio strong {
+  display: block;
+  font-weight: 600;
+  color: var(--pino);
+  white-space: nowrap;
+}
+
+.servicio-precio span {
+  font-size: 0.75rem;
+  color: var(--grafito);
+}
+
+.servicios-vacio {
+  padding: 16px 0;
+  font-size: 0.875rem;
+  color: var(--grafito);
+  border-bottom: 1px solid var(--linea);
+}
+
+.form-servicio {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--fondo);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-grande);
+}
+
+.form-servicio h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.tipos-precio {
+  border: none;
+}
+
+.tipos-precio legend {
+  margin-bottom: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.opciones-precio {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.opciones-precio label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--grafito);
+  background: var(--superficie);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--radio);
+  cursor: pointer;
+}
+
+.opciones-precio input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.opciones-precio label:has(input:checked) {
+  color: #FFFFFF;
+  background: var(--pino);
+  border-color: var(--pino);
+}
+
+.opciones-precio label:has(input:focus-visible) {
+  outline: 2px solid var(--pino);
+  outline-offset: 2px;
+}
+
+.campos-precio {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 14px 18px;
+}
+
+.campos-precio .casilla {
+  grid-column: 1 / -1;
+}
+
+.campos-precio > .ayuda {
+  grid-column: 1 / -1;
+}
+
+.con-sufijo {
+  position: relative;
+}
+
+.con-sufijo input {
+  padding-right: 44px;
+}
+
+.con-sufijo span {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: 0.875rem;
+  color: var(--grafito);
+  pointer-events: none;
+}
+
+.acciones-form {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 20px;
+}
+
 /* Barra de guardar */
 .pie-formulario {
   display: flex;
@@ -388,8 +549,21 @@
   .sector {
     grid-template-columns: 1fr;
   }
-  .rejilla {
+  .rejilla,
+  .campos-precio {
     grid-template-columns: 1fr;
+  }
+  .opciones-precio {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .servicio {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .servicio-acciones {
+    grid-column: 1 / -1;
+  }
+  .panel-cabecera-accion {
+    flex-direction: column;
   }
   .progreso {
     min-width: 0;

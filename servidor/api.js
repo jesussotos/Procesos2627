@@ -203,6 +203,39 @@ app.put('/api/perfil', requerirAutenticacion, async (req, res) => {
   try {
     res.json(await logica.guardarPerfil(req.usuario, req.body));
   } catch (error) {
+    // 409 (RN-03): se devuelven los servicios que se borrarían para que el cliente pida confirmación
+    res.status(error.status || 400).json({ error: error.message, servicios: error.servicios });
+  }
+});
+
+// --- SERVICIOS DEL PROFESIONAL (RF-14, RF-15) ---
+// Los permisos (RN-02) y las reglas de precio (RN-06) los aplica la lógica
+
+app.post('/api/perfil/servicios', requerirAutenticacion, async (req, res) => {
+  try {
+    res.status(201).json(await logica.crearServicio(req.usuario, req.body));
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+app.put('/api/perfil/servicios/:id', requerirAutenticacion, async (req, res) => {
+  const id = leerId(req, res);
+  if (id === null) return;
+  try {
+    res.json(await logica.editarServicio(req.usuario, id, req.body));
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/perfil/servicios/:id', requerirAutenticacion, async (req, res) => {
+  const id = leerId(req, res);
+  if (id === null) return;
+  try {
+    await logica.borrarServicio(req.usuario, id);
+    res.json({ ok: true });
+  } catch (error) {
     res.status(error.status || 400).json({ error: error.message });
   }
 });

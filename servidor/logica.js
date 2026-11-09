@@ -114,6 +114,154 @@ function idValido(valor) {
   return Number.isInteger(valor) && valor > 0;
 }
 
+// --- Servicios (RF-14, RF-15) ---
+
+const LIMITES_SERVICIO = {
+  titulo: 80,
+  descripcion: 1000,
+  unidad: 20,
+  maximoServicios: 30,
+  importeMaximoCentimos: 100000000 // 1.000.000 €
+};
+
+// Tipos de precio: los cinco de la especificación (apartado 3.2) y el presupuesto cerrado (D-26)
+const TIPOS_PRECIO = ['fijo', 'hora', 'unidad', 'desde', 'consultar', 'presupuesto'];
+const TIPOS_CON_IMPORTE = ['fijo', 'hora', 'unidad', 'desde'];
+
+function estaVacio(valor) {
+  return valor === undefined || valor === null || (typeof valor === 'string' && valor.trim() === '');
+}
+
+// Convierte un importe en euros ("22,50", "22.5" o 22.5) a céntimos enteros (D-25).
+// Debe ser mayor que 0 y tener como mucho dos decimales.
+function leerImporte(valor, campo) {
+  let texto;
+  if (typeof valor === 'number') {
+    if (!Number.isFinite(valor)) throw errorDe(`${campo} no es un número válido`, 400);
+    texto = String(valor);
+  } else if (typeof valor === 'string') {
+    texto = valor.trim().replace(',', '.');
+  } else {
+    throw errorDe(`${campo} no es un número válido`, 400);
+  }
+  if (!/^\d+(\.\d{1,2})?$/.test(texto)) {
+    throw errorDe(`${campo} debe ser un número positivo con, como mucho, dos decimales`, 400);
+  }
+  const [enteros, decimales = ''] = texto.split('.');
+  const centimos = Number(enteros) * 100 + Number(decimales.padEnd(2, '0'));
+  if (centimos <= 0) {
+    throw errorDe(`${campo} debe ser mayor que 0`, 400);
+  }
+  if (centimos > LIMITES_SERVICIO.importeMaximoCentimos) {
+    throw errorDe(`${campo} no puede superar 1.000.000 €`, 400);
+  }
+  return centimos;
+}
+
+// Valida un servicio y devuelve los datos listos para guardar.
+// sectoresDelPerfil: [{ id, nombre, activo }]; sectorActualId: sector que ya tenía (al editar)
+function validarServicio(entrada, sectoresDelPerfil, sectorActualId = null) {
+  const titulo = textoLimpio(entrada.titulo, 'título', LIMITES_SERVICIO.titulo, { obligatorio: true });
+  const descripcion = textoLimpio(entrada.descripcion, 'descripción', LIMITES_SERVICIO.descripcion, { multilinea: true });
+
+  // RN-03: el sector del servicio tiene que ser uno de los del perfil
+  const sectorId = entrada.sectorId;
+  const sector = idValido(sectorId) ? sectoresDelPerfil.find((s) => s.id === sectorId) : null;
+  if (!sector) {
+    throw errorDe('El servicio debe pertenecer a uno de los sectores de tu perfil', 400);
+  }
+  // RN-04: no se usan sectores desactivados, salvo para conservar el que ya tenía el servicio
+  if (!sector.activo && sectorId !== sectorActualId) {
+    throw errorDe(`El sector ${sector.nombre} ya no se ofrece`, 400);
+  }
+
+  const tipoPrecio = entrada.tipoPrecio;
+  if (!TIPOS_PRECIO.includes(tipoPrecio)) {
+    throw errorDe('Tipo de precio no válido', 400);
+  }
+
+  // RN-06: importe obligatorio y mayor que 0 salvo en «a consultar» y «presupuesto cerrado»
+  let importeCentimos = null;
+  if (TIPOS_CON_IMPORTE.includes(tipoPrecio)) {
+    if (estaVacio(entrada.importe)) throw errorDe('Indica el importe del servicio', 400);
+    importeCentimos = leerImporte(entrada.importe, 'El importe');
+  } else if (!estaVacio(entrada.importe)) {
+    throw errorDe(tipoPrecio === 'consultar'
+      ? 'Un servicio «a consultar» no lleva importe'
+      : 'Un servicio con presupuesto cerrado no lleva importe', 400);
+  }
+
+  // RN-06: la unidad solo es obligatoria en «por unidad»; en «por hora» es siempre «hora»
+  let unidad = null;
+  if (tipoPrecio === 'unidad') {
+    unidad = textoLimpio(entrada.unidad, 'unidad', LIMITES_SERVICIO.unidad, { obligatorio: true });
+  } else if (tipoPrecio === 'hora') {
+    unidad = 'hora';
+  }
+
+  // IVA: solo tiene sentido si hay importe
+  const ivaIncluido = importeCentimos === null ? null : (entrada.ivaIncluido === false ? 0 : 1);
+
+  // Presupuesto cerrado (D-26): gratuito o, si no, con un precio de visita opcional
+  let presupuestoGratis = null;
+  let visitaCentimos = null;
+  if (tipoPrecio === 'presupuesto') {
+    presupuestoGratis = entrada.presupuestoGratis === false ? 0 : 1;
+    if (!estaVacio(entrada.precioVisita)) {
+      if (presupuestoGratis) {
+        throw errorDe('Si el presupuesto es gratuito, no indiques precio de visita', 400);
+      }
+      visitaCentimos = leerImporte(entrada.precioVisita, 'El precio de la visita');
+    }
+  }
+
+  return { sectorId, titulo, descripcion, tipoPrecio, importeCentimos, unidad, ivaIncluido, presupuestoGratis, visitaCentimos };
+}
+
+// Servicio tal como lo devuelve la API: importes en euros y booleanos de verdad
+function aServicioPublico(fila) {
+  const euros = (centimos) => (centimos === null || centimos === undefined ? null : centimos / 100);
+  const booleano = (valor) => (valor === null || valor === undefined ? null : Boolean(valor));
+  return {
+    id: fila.id,
+    sectorId: fila.sector_id,
+    sector: fila.sector_nombre,
+    sectorActivo: fila.sector_activo === undefined ? undefined : Boolean(fila.sector_activo),
+    titulo: fila.titulo,
+    descripcion: fila.descripcion || '',
+    tipoPrecio: fila.tipo_precio,
+    importe: euros(fila.importe_centimos),
+    unidad: fila.unidad,
+    ivaIncluido: booleano(fila.iva_incluido),
+    presupuestoGratis: booleano(fila.presupuesto_gratis),
+    precioVisita: euros(fila.visita_centimos)
+  };
+}
+
+// Perfil del profesional que hace la petición, o error si aún no lo ha creado
+async function perfilPropio(usuario) {
+  exigirProfesional(usuario);
+  const perfil = await datos.buscarPerfilPorUsuario(usuario.id);
+  if (!perfil) {
+    throw errorDe('Guarda primero tu perfil con al menos un sector para añadir servicios', 400);
+  }
+  return perfil;
+}
+
+// RN-02: el servicio tiene que existir y ser del profesional que lo pide
+async function servicioPropio(usuario, id) {
+  exigirProfesional(usuario);
+  const servicio = await datos.buscarServicio(id);
+  if (!servicio) {
+    throw errorDe('Servicio no encontrado', 404);
+  }
+  if (servicio.usuario_id !== usuario.id) {
+    throw errorDe('No puedes modificar un servicio de otro profesional', 403);
+  }
+  // Si el servicio es suyo, su perfil existe
+  return { perfil: await datos.buscarPerfilPorUsuario(usuario.id), servicio };
+}
+
 // --- Imágenes (RF-23) ---
 
 const LIMITES_IMAGEN = {
@@ -391,11 +539,12 @@ const logica = {
     if (!perfil) {
       return {
         existe: false, nombreComercial: '', descripcion: '', telefono: '', emailContacto: '',
-        web: '', whatsapp: '', actualizado: null, sectores: [], ciudades: [], ...conImagenes
+        web: '', whatsapp: '', actualizado: null, sectores: [], ciudades: [], servicios: [], ...conImagenes
       };
     }
     return {
       ...conImagenes,
+      servicios: (await datos.serviciosDePerfil(perfil.id)).map(aServicioPublico),
       existe: true,
       nombreComercial: perfil.nombre_comercial,
       descripcion: perfil.descripcion || '',
@@ -470,13 +619,56 @@ const logica = {
       ciudades.push(ciudadId);
     }
 
+    // RN-03: si se quitan sectores con servicios, se borran esos servicios, pero solo tras confirmarlo
+    const sectoresQuitados = sectoresActuales
+      .filter((actual) => !sectores.some((s) => s.sectorId === actual.id))
+      .map((s) => s.id);
+    if (perfilActual && sectoresQuitados.length > 0) {
+      const afectados = (await datos.serviciosDePerfil(perfilActual.id))
+        .filter((sv) => sectoresQuitados.includes(sv.sector_id));
+      if (afectados.length > 0 && entrada.confirmarBorrado !== true) {
+        const error = errorDe('Al quitar estos sectores se borrarán sus servicios. Confírmalo para continuar', 409);
+        error.servicios = afectados.map((sv) => ({ id: sv.id, titulo: sv.titulo, sector: sv.sector_nombre }));
+        throw error;
+      }
+    }
+
     // Todo es válido: se escribe
     const perfilId = await datos.guardarPerfil(usuario.id, basicos);
-    // RN-03 (paso 5): al quitar un sector se borrarán también sus servicios
+    await datos.borrarServiciosDeSectores(perfilId, sectoresQuitados);
     await datos.reemplazarSectoresPerfil(perfilId, sectores);
     await datos.reemplazarCiudadesPerfil(perfilId, ciudades);
     console.log(`[perfil] Perfil de ${usuario.email} guardado`);
     return await logica.obtenerPerfil(usuario);
+  },
+
+  // --- Servicios (RF-14, RF-15) ---
+
+  // RF-14: crear un servicio dentro de uno de los sectores del perfil
+  crearServicio: async (usuario, entrada = {}) => {
+    const perfil = await perfilPropio(usuario);
+    const existentes = await datos.serviciosDePerfil(perfil.id);
+    if (existentes.length >= LIMITES_SERVICIO.maximoServicios) {
+      throw errorDe(`Puedes publicar como máximo ${LIMITES_SERVICIO.maximoServicios} servicios`, 400);
+    }
+    const servicio = validarServicio(entrada, await datos.sectoresDePerfil(perfil.id));
+    const id = await datos.crearServicio(perfil.id, servicio);
+    console.log(`[servicios] ${usuario.email} crea «${servicio.titulo}»`);
+    return (await datos.serviciosDePerfil(perfil.id)).map(aServicioPublico).find((sv) => sv.id === id);
+  },
+
+  // RF-15 + RN-02: editar un servicio propio
+  editarServicio: async (usuario, id, entrada = {}) => {
+    const { perfil, servicio } = await servicioPropio(usuario, id);
+    const datosNuevos = validarServicio(entrada, await datos.sectoresDePerfil(perfil.id), servicio.sector_id);
+    await datos.actualizarServicio(id, datosNuevos);
+    return (await datos.serviciosDePerfil(perfil.id)).map(aServicioPublico).find((sv) => sv.id === id);
+  },
+
+  // RF-15 + RN-02: borrar un servicio propio
+  borrarServicio: async (usuario, id) => {
+    await servicioPropio(usuario, id);
+    await datos.borrarServicio(id);
   },
 
   // --- Logo y fotos de trabajos (RF-23, opcionales) ---

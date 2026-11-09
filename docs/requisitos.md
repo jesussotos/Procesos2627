@@ -25,7 +25,7 @@ timestamp: 2026-11-06
 | RNF-03 | Hash seguro de contraseñas | hecho | `bcryptjs` genera salt y hash. |
 | RNF-04 | Rutas protegidas por sesión y rol | hecho | Middleware JWT y middleware de rol en `servidor/api.js`. |
 | RNF-05 | Despliegue en cloud con URL pública | hecho | Google Cloud Run: <https://procesos2627-1055302173608.europe-southwest1.run.app>. Documentado en el README. |
-| RNF-06 | Pruebas unitarias de la lógica (5 o más) | hecho | 44 pruebas en `test/logica.test.js`, con base de datos en memoria y correo falso. Se ejecutan con `npm test` en local y en el CI. |
+| RNF-06 | Pruebas unitarias de la lógica (5 o más) | hecho | 55 pruebas en `test/logica.test.js`, con base de datos en memoria y correo falso. Se ejecutan con `npm test` en local y en el CI. |
 | RNF-07 | Manejo de errores con feedback al usuario | hecho | La API devuelve errores y el frontend muestra mensajes. |
 | RNF-08 | Registro de actividad (log) | hecho | Morgan en `servidor/api.js`; los registros se consultan en Cloud Logging. |
 | RNF-10 | Validación en el servidor y texto escapado en el cliente | parcial | El perfil se valida y limpia en la lógica; las páginas pintan los textos con `textContent`. Falta aplicarlo a la ficha y el buscador (paso 6). |
@@ -43,9 +43,11 @@ timestamp: 2026-11-06
 | RN-09 | Un profesional solo se elimina a sí mismo; el admin elimina a cualquiera menos a sí mismo | hecho | `logica.eliminarUsuario` (pruebas 12 a 15). |
 | RN-11 | Una cuenta eliminada puede volver a registrarse con el mismo correo | hecho | `registrarUsuario` reactiva la misma fila como `pendiente` (prueba 18). |
 | RN-04 | Solo se eligen sectores activos; desactivar oculta sin borrar | hecho | Desactivar oculta el sector de `GET /api/sectores` sin borrarlo (prueba 24). `guardarPerfil` rechaza añadir un sector desactivado; quien ya lo tenía puede conservarlo (pruebas 31 y 32). |
-| RN-02 | Un profesional solo toca su propio perfil | hecho | `/api/perfil` no recibe id: el perfil se obtiene de la sesión; el administrador no tiene perfil (prueba 37). Los servicios se añadirán en el paso 5. |
+| RN-02 | Un profesional solo toca su propio perfil y sus servicios | hecho | `/api/perfil` no recibe id: el perfil se obtiene de la sesión; el administrador no tiene perfil (prueba 37). Editar o borrar un servicio de otro responde 403 (prueba 51). |
+| RN-03 | Servicios solo en sectores del perfil; quitar un sector borra sus servicios tras confirmar | hecho | `validarServicio` (prueba 50). `PUT /api/perfil` responde 409 con los servicios afectados y solo los borra con `confirmarBorrado: true`; la página pide la confirmación (prueba 53, D-27). |
+| RN-06 | Importe obligatorio y mayor que 0 salvo «a consultar»; unidad solo en «por unidad» | hecho | `validarServicio` y `leerImporte`, también para el presupuesto cerrado (pruebas 47 a 49). |
 | RN-07 | Ciudades del catálogo y sin repetir | hecho | `guardarPerfil` comprueba cada ciudad y los duplicados (prueba 33). |
-| RN-10 | Límites de longitud de los textos | hecho | Nombre comercial 80, especialidad 150, descripción 1.000 (prueba 34). El título de servicio llegará en el paso 5. |
+| RN-10 | Límites de longitud de los textos | hecho | Nombre comercial 80, especialidad 150, título de servicio 80 y descripciones 1.000 (pruebas 34 y 55). |
 | RN-05 | Nombres de sector únicos sin distinguir mayúsculas ni tildes | hecho | Columna `nombre_normalizado` con índice `UNIQUE` y comprobación en `crearSector` y `renombrarSector` (pruebas 21 y 22). |
 
 ## Requisitos funcionales del Sprint 2
@@ -55,7 +57,9 @@ timestamp: 2026-11-06
 | RF-11 | Crear y editar el perfil | hecho | `GET` y `PUT /api/perfil`; página «Mi perfil» (`cliente/dashboard.html`). Nombre comercial obligatorio y al menos un dato de contacto válido (pruebas 29, 35 y 36). |
 | RF-12 | Elegir sectores con especialidad | hecho | Casillas con especialidad obligatoria en «Mi perfil» (pruebas 29, 30 y 35). |
 | RF-13 | Definir la zona de actuación | hecho | Autocompletado de ciudades y lista de ciudades elegidas en «Mi perfil» (pruebas 29, 30 y 33). |
-| RF-16 | Ver si el perfil está publicado y qué le falta | parcial | «Mi perfil» muestra el progreso (nombre, contacto, sectores y zona) y una vista previa de la ficha. Faltan los servicios (paso 5) y el cálculo de RN-01 en el servidor. |
+| RF-14 | Crear un servicio con su precio | hecho | `POST /api/perfil/servicios`; seis tipos de precio (D-26), importes en céntimos (D-25), como máximo 30 servicios (pruebas 45, 46, 49 y 55). Bloque «Servicios» en «Mi perfil». |
+| RF-15 | Editar y borrar los servicios propios | hecho | `PUT` y `DELETE /api/perfil/servicios/:id` (pruebas 51, 52 y 54). |
+| RF-16 | Ver si el perfil está publicado y qué le falta | parcial | «Mi perfil» muestra el progreso con los cinco apartados de RN-01 (nombre, contacto, sectores, zona y servicios) y una vista previa de la ficha. Falta el cálculo de RN-01 en el servidor (paso 6). |
 | RF-23 | Logo y fotos de trabajos (opcionales) | hecho | Nuevo, ampliación del alcance (D-24). `PUT`/`DELETE /api/perfil/logo`, `POST /api/perfil/fotos`, `DELETE /api/perfil/fotos/:id` y `GET /api/imagenes/:id`; como máximo 8 fotos de 600 KB; el navegador reduce las imágenes antes de subirlas (pruebas 39 a 44). |
 | RF-17 | Consultar la lista de sectores activos | hecho | `GET /api/sectores`, público (pruebas 20 y 24). |
 | RF-22 | Gestionar el catálogo de sectores | hecho | `POST /api/sectores` y `PATCH /api/sectores/:id` (solo `admin`); sección «Sectores» de `cliente/admin.html` (pruebas 20 a 26). |
