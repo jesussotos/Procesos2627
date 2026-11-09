@@ -259,78 +259,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     return bloque;
   }
 
-  // Cada resultado es un profesional (apartado 4.4) con los servicios que cumplen los filtros
+  // Cada resultado es un profesional (apartado 4.4) con los servicios que cumplen los filtros.
+  // La tarjeta es la misma que ve el profesional en la vista previa de «Mi perfil» (D-32)
   function tarjeta(r, ciudadBuscada) {
-    const enlace = document.createElement('a');
-    enlace.className = 'ficha resultado';
-    enlace.href = `/ficha.html?id=${r.id}`;
-
-    const cabecera = document.createElement('div');
-    cabecera.className = 'ficha-cabecera';
-    const logo = document.createElement('div');
-    logo.className = 'ficha-logo';
-    pintarLogo(logo, r.logo, r.nombreComercial);
-    const titulo = document.createElement('div');
-    const nombre = document.createElement('h3');
-    nombre.className = 'ficha-nombre';
-    nombre.textContent = r.nombreComercial;
-    const zona = document.createElement('p');
-    zona.className = 'ficha-zona';
-    zona.textContent = `Trabaja en ${textoZona(r.ciudades, ciudadBuscada.nombre)}`;
-    titulo.append(nombre, zona);
-    cabecera.append(logo, titulo);
-
-    const cuerpo = document.createElement('div');
-    cuerpo.className = 'ficha-cuerpo';
-    const sectores = document.createElement('p');
-    sectores.className = 'resultado-sectores';
-    sectores.textContent = r.sectores.join(', ');
-    const servicios = document.createElement('ul');
-    servicios.className = 'ficha-servicios';
-    r.servicios.forEach(servicio => {
-      const li = document.createElement('li');
-      const nombreServicio = document.createElement('span');
-      nombreServicio.textContent = servicio.titulo;
-      const precio = document.createElement('span');
-      const importe = document.createElement('strong');
-      importe.textContent = Precio.texto(servicio);
-      if (servicio.tipoPrecio === 'presupuesto' && servicio.presupuestoGratis) importe.className = 'gratis';
-      precio.appendChild(importe);
-      const iva = Precio.iva(servicio, true);
-      if (iva) {
-        const nota = document.createElement('small');
-        nota.textContent = iva;
-        precio.appendChild(nota);
-      }
-      li.append(nombreServicio, precio);
-      servicios.appendChild(li);
-    });
-    cuerpo.append(sectores, servicios);
-    const resto = r.serviciosCoincidentes - r.servicios.length;
-    if (resto > 0) {
-      const mas = document.createElement('p');
-      mas.className = 'ficha-mas';
-      mas.textContent = `y ${resto} ${resto === 1 ? 'servicio más' : 'servicios más'}`;
-      cuerpo.appendChild(mas);
-    }
-
-    const pie = document.createElement('div');
-    pie.className = 'resultado-pie';
-    const referencia = document.createElement('span');
-    if (r.precioReferencia !== null) {
-      referencia.append('desde ');
-      const cifra = document.createElement('strong');
-      cifra.textContent = Precio.euros(r.precioReferencia);
-      referencia.appendChild(cifra);
-    } else {
-      referencia.textContent = r.servicios.some(s => s.tipoPrecio === 'presupuesto') ? 'Pide presupuesto' : 'Precio a consultar';
-    }
-    const ver = document.createElement('span');
-    ver.textContent = 'Ver ficha';
-    pie.append(referencia, ver);
-
-    enlace.append(cabecera, cuerpo, pie);
-    return enlace;
+    return crearTarjeta({
+      nombreComercial: r.nombreComercial,
+      logo: r.logo,
+      zona: textoZona(r.ciudades, ciudadBuscada.nombre),
+      fotos: r.fotos,
+      totalFotos: r.totalFotos,
+      descripcion: r.descripcion,
+      sectores: r.sectores,
+      contacto: r.contacto,
+      servicios: r.servicios,
+      totalServicios: r.serviciosCoincidentes,
+      precioReferencia: r.precioReferencia
+    }, { href: `/ficha.html?id=${r.id}` });
   }
 
   await leerUrl();

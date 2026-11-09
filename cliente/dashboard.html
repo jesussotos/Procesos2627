@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/ficha.css">
   <link rel="stylesheet" href="css/perfil.css">
+  <link rel="stylesheet" href="css/interfaz.css">
 </head>
 <body>
 
@@ -221,26 +222,13 @@
 
     <aside class="vista-previa">
       <p>Así te verán los clientes</p>
-      <article class="ficha">
-        <div class="ficha-cabecera">
-          <div class="ficha-logo" id="previa-logo"></div>
-          <div>
-            <h3 class="ficha-nombre" id="previa-nombre"></h3>
-            <p class="ficha-zona" id="previa-zona"></p>
-          </div>
-        </div>
-        <div class="ficha-cuerpo">
-          <div class="ficha-fotos" id="previa-fotos" hidden></div>
-          <p class="ficha-descripcion" id="previa-descripcion"></p>
-          <ul class="ficha-sectores" id="previa-sectores"></ul>
-          <div class="ficha-contacto" id="previa-contacto"></div>
-          <div id="previa-servicios"></div>
-        </div>
-      </article>
+      <div id="vista-ficha"></div>
     </aside>
   </main>
 
+  <script src="interfaz.js"></script>
   <script src="precio.js"></script>
+  <script src="publico.js"></script>
   <script src="perfil.js"></script>
 </body>
 </html>

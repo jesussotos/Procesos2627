@@ -31,23 +31,7 @@
 
       <div class="acceso-ejemplo" aria-hidden="true">
         <p>Así verán los clientes tu ficha</p>
-        <article class="ficha">
-          <div class="ficha-cabecera">
-            <div class="ficha-logo">FP</div>
-            <div>
-              <h3 class="ficha-nombre">Fontanería Pérez</h3>
-              <p class="ficha-zona">Madrid, Majadahonda y Pozuelo de Alarcón</p>
-            </div>
-          </div>
-          <div class="ficha-cuerpo">
-            <ul class="ficha-sectores">
-              <li><strong>Fontanería</strong><span>Calderas, calentadores y fugas</span></li>
-              <li><strong>Climatización</strong><span>Instalación de aire acondicionado</span></li>
-            </ul>
-            <div class="ficha-contacto"><span>Teléfono</span><span>WhatsApp</span><span>Web</span></div>
-            <div class="ficha-precio">Reparación de fugas <strong>desde 40 €</strong></div>
-          </div>
-        </article>
+        <div id="ficha-ejemplo"></div>
       </div>
     </section>
 
@@ -104,6 +88,8 @@
     </section>
   </main>
 
+  <script src="precio.js"></script>
+  <script src="publico.js"></script>
   <script src="rest.js"></script>
   <script>
     function mostrarFormulario(modo) {

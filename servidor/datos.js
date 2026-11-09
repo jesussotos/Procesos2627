@@ -569,6 +569,17 @@ module.exports = {
     return aObjetos(resultado);
   },
 
+  // Fotos de trabajos de varios usuarios (sin el contenido binario)
+  fotosDeUsuarios: async (usuarioIds) => {
+    if (usuarioIds.length === 0) return [];
+    const resultado = await consultar(
+      `SELECT id, usuario_id FROM imagenes
+       WHERE tipo = 'trabajo' AND usuario_id IN (${huecos(usuarioIds)}) ORDER BY id`,
+      usuarioIds
+    );
+    return aObjetos(resultado);
+  },
+
   // Perfil solo si está publicado (RN-01); null en cualquier otro caso
   perfilPublicado: async (perfilId) => {
     return buscarUno(

@@ -602,7 +602,14 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     });
     const resultado = await buscar();
     expect(resultado.total).toBe(1);
-    expect(resultado.resultados[0]).toEqual(expect.objectContaining({ id: perfilId, sectores: ['Fontanería'], precioReferencia: 40 }));
+    expect(resultado.resultados[0]).toEqual(expect.objectContaining({
+      id: perfilId,
+      sectores: [{ nombre: 'Fontanería', especialidad: 'General' }],
+      contacto: ['telefono'],
+      fotos: [],
+      totalFotos: 0,
+      precioReferencia: 40
+    }));
     expect((await logica.obtenerPerfil(usuario)).publicacion).toEqual({ publicado: true, faltan: [] });
   });
 

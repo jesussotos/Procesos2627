@@ -62,8 +62,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-logout').addEventListener('click', cerrarSesion);
 
   // RF-09: el profesional elimina su propia cuenta (borrado lógico)
-  document.getElementById('btn-eliminar').addEventListener('click', async () => {
-    if (!confirm('¿Seguro que quieres eliminar tu cuenta? Podrás volver a registrarte con el mismo correo.')) return;
+  document.getElementById('btn-eliminar').addEventListener('click', async (e) => {
+    if (!(await Interfaz.confirmar(e.currentTarget, { pregunta: '¿Eliminar tu cuenta?', si: 'Sí, eliminar' }))) return;
     try {
       await peticion('DELETE', '/api/usuarios/me');
       localStorage.removeItem('jwt_token');
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       quitar.type = 'button';
       quitar.textContent = '×';
       quitar.title = 'Quitar esta foto';
-      quitar.addEventListener('click', () => quitarFoto(foto));
+      quitar.addEventListener('click', () => quitarFoto(foto, quitar));
       marco.append(img, quitar);
       return marco;
     }));
@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('quitar-logo').addEventListener('click', async () => {
-    if (!confirm('¿Quitar el logo de tu ficha?')) return;
+    if (!(await Interfaz.confirmar(document.getElementById('quitar-logo'), { pregunta: '¿Quitar el logo?', si: 'Quitar' }))) return;
     try {
       await peticion('DELETE', '/api/perfil/logo');
       logo = null;
@@ -385,8 +385,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  async function quitarFoto(foto) {
-    if (!confirm('¿Quitar esta foto de tu ficha?')) return;
+  async function quitarFoto(foto, boton) {
+    if (!(await Interfaz.confirmar(boton, { pregunta: '¿Quitar la foto?', si: 'Quitar', no: 'No' }))) return;
     try {
       await peticion('DELETE', `/api/perfil/fotos/${foto.id}`);
       fotos = fotos.filter(f => f.id !== foto.id);
@@ -515,7 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         borrar.type = 'button';
         borrar.className = 'boton-texto peligro';
         borrar.textContent = 'Borrar';
-        borrar.addEventListener('click', () => borrarServicio(servicio));
+        borrar.addEventListener('click', () => borrarServicio(servicio, borrar));
         acciones.append(editar, borrar);
 
         fila.append(info, precio, acciones);
@@ -565,8 +565,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  async function borrarServicio(servicio) {
-    if (!confirm(`¿Borrar el servicio «${servicio.titulo}»?`)) return;
+  async function borrarServicio(servicio, boton) {
+    if (!(await Interfaz.confirmar(boton, { pregunta: '¿Borrar?', si: 'Borrar', no: 'No' }))) return;
     try {
       await peticion('DELETE', `/api/perfil/servicios/${servicio.id}`);
       servicios = servicios.filter(s => s.id !== servicio.id);
@@ -580,117 +580,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Vista previa de la ficha y progreso ---
 
-  function listaDeCiudades(ciudades) {
-    const nombres = ciudades.map(c => c.nombre);
-    if (nombres.length <= 3) {
-      return nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}` : (nombres[0] || '');
-    }
-    return `${nombres.slice(0, 2).join(', ')} y ${nombres.length - 2} ciudades más`;
-  }
-
-  function textoVacio(elemento, texto) {
-    const p = document.createElement('p');
-    p.className = 'ficha-vacia';
-    p.textContent = texto;
-    elemento.replaceChildren(p);
-  }
-
+  // La vista previa usa la misma tarjeta que el buscador (crearTarjeta, en publico.js; D-32)
   function pintarVistaPrevia() {
     const nombre = campos.nombreComercial.value.trim();
-    pintarLogoEn(document.getElementById('previa-logo'));
     if (!logo) pintarLogoEn(document.getElementById('logo-actual'));
 
-    const previaFotos = document.getElementById('previa-fotos');
-    previaFotos.hidden = fotos.length === 0;
-    previaFotos.replaceChildren(...fotos.slice(0, 3).map((foto, i) => {
-      const marco = document.createElement('div');
-      const img = document.createElement('img');
-      img.src = foto.url;
-      img.alt = '';
-      marco.appendChild(img);
-      if (i === 2 && fotos.length > 3) {
-        marco.className = 'mas';
-        marco.dataset.mas = `+${fotos.length - 3}`;
-      }
-      return marco;
-    }));
-    const previaNombre = document.getElementById('previa-nombre');
-    previaNombre.textContent = nombre || 'Tu nombre comercial';
-    previaNombre.classList.toggle('vacio', !nombre);
-
-    document.getElementById('previa-zona').textContent = ciudadesElegidas.length
-      ? listaDeCiudades(ciudadesElegidas)
-      : 'Añade las ciudades donde trabajas';
-
-    const descripcion = document.getElementById('previa-descripcion');
-    descripcion.textContent = campos.descripcion.value.trim();
-    descripcion.hidden = !descripcion.textContent;
-
     const sectores = sectoresDelFormulario();
-    const previaSectores = document.getElementById('previa-sectores');
-    if (sectores.length === 0) {
-      textoVacio(previaSectores, 'Elige al menos un sector.');
-    } else {
-      previaSectores.replaceChildren(...sectores.map(s => {
-        const li = document.createElement('li');
-        const titulo = document.createElement('strong');
-        titulo.textContent = s.nombre;
-        const detalle = document.createElement('span');
-        detalle.textContent = s.especialidad.trim() || 'Escribe tu especialidad';
-        li.append(titulo, detalle);
-        return li;
-      }));
-    }
+    const medios = [['telefono', 'telefono'], ['whatsapp', 'whatsapp'], ['emailContacto', 'email'], ['web', 'web']]
+      .filter(([campo]) => campos[campo].value.trim())
+      .map(([, medio]) => medio);
 
-    const medios = [['telefono', 'Teléfono'], ['whatsapp', 'WhatsApp'], ['emailContacto', 'Correo'], ['web', 'Web']]
-      .filter(([clave]) => campos[clave].value.trim())
-      .map(([, etiqueta]) => etiqueta);
-    const previaContacto = document.getElementById('previa-contacto');
-    if (medios.length === 0) {
-      textoVacio(previaContacto, 'Añade al menos un medio de contacto.');
-    } else {
-      previaContacto.replaceChildren(...medios.map(texto => {
-        const span = document.createElement('span');
-        span.textContent = texto;
-        return span;
-      }));
-    }
-
-    // Servicios: los tres primeros con su precio
-    const previaServicios = document.getElementById('previa-servicios');
-    if (servicios.length === 0) {
-      textoVacio(previaServicios, 'Tus servicios y precios aparecerán aquí.');
-    } else {
-      const lista = document.createElement('ul');
-      lista.className = 'ficha-servicios';
-      servicios.slice(0, 3).forEach(servicio => {
-        const li = document.createElement('li');
-        const titulo = document.createElement('span');
-        titulo.textContent = servicio.titulo;
-        const precio = document.createElement('span');
-        const importe = document.createElement('strong');
-        importe.textContent = Precio.texto(servicio);
-        if (servicio.tipoPrecio === 'presupuesto' && servicio.presupuestoGratis) importe.className = 'gratis';
-        precio.appendChild(importe);
-        const iva = Precio.iva(servicio, true);
-        if (iva) {
-          const nota = document.createElement('small');
-          nota.textContent = iva;
-          precio.appendChild(nota);
-        }
-        li.append(titulo, precio);
-        lista.appendChild(li);
-      });
-      const elementos = [lista];
-      if (servicios.length > 3) {
-        const mas = document.createElement('p');
-        mas.className = 'ficha-mas';
-        const resto = servicios.length - 3;
-        mas.textContent = `y ${resto} ${resto === 1 ? 'servicio más' : 'servicios más'}`;
-        elementos.push(mas);
-      }
-      previaServicios.replaceChildren(...elementos);
-    }
+    document.getElementById('vista-ficha').replaceChildren(crearTarjeta({
+      nombreComercial: nombre,
+      logo,
+      zona: textoZona(ciudadesElegidas),
+      fotos,
+      totalFotos: fotos.length,
+      descripcion: campos.descripcion.value.trim(),
+      sectores: sectores.map(s => ({ nombre: s.nombre, especialidad: s.especialidad.trim() })),
+      contacto: medios,
+      servicios,
+      totalServicios: servicios.length,
+      precioReferencia: Precio.referencia(servicios)
+    }, { previa: true }));
 
     // Progreso: lo que necesita la ficha para poder publicarse (RN-01)
     const pasos = [
@@ -789,8 +701,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (error) {
         // RN-03: al quitar sectores con servicios, el servidor pide confirmación antes de borrarlos
         if (error.status !== 409 || !error.datos.servicios) throw error;
-        const lista = error.datos.servicios.map(s => `  · ${s.titulo} (${s.sector})`).join('\n');
-        if (!confirm(`Al quitar ese sector se borrarán estos servicios:\n\n${lista}\n\n¿Quieres continuar?`)) {
+        const borrar = await Interfaz.confirmarBloque(document.querySelector('.pie-formulario'), {
+          titulo: 'Al quitar ese sector se borrarán estos servicios:',
+          detalle: error.datos.servicios.map(s => `${s.titulo} (${s.sector})`),
+          si: 'Borrar servicios y guardar'
+        });
+        if (!borrar) {
           mostrarMensaje('No se ha guardado el perfil. Vuelve a marcar el sector si quieres conservar sus servicios.');
           return;
         }

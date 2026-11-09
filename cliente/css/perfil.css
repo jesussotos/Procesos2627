@@ -151,10 +151,7 @@
 }
 
 .casilla input {
-  width: 16px;
-  height: 16px;
   flex-shrink: 0;
-  accent-color: var(--pino);
 }
 
 .sector.no-disponible .casilla span {
@@ -166,39 +163,10 @@
   position: relative;
 }
 
-.sugerencias {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 10;
-  max-height: 264px;
-  overflow-y: auto;
-  list-style: none;
-  background: var(--superficie);
-  border: 1px solid var(--linea-fuerte);
-  border-radius: var(--radio);
-  box-shadow: 0 12px 28px rgba(26, 29, 31, 0.1);
-}
 
-.sugerencias li {
-  padding: 9px 12px;
-  font-size: 0.9375rem;
-  cursor: pointer;
-}
 
-.sugerencias li + li {
-  border-top: 1px solid var(--linea);
-}
 
-.sugerencias li[role=option]:hover {
-  background: var(--pino-claro);
-}
 
-.sugerencias .sin-resultados {
-  color: var(--grafito);
-  cursor: default;
-}
 
 .chips {
   display: flex;
@@ -314,7 +282,7 @@
   display: block;
 }
 
-.foto button {
+.foto > button {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -329,7 +297,7 @@
   cursor: pointer;
 }
 
-.foto button:hover {
+.foto > button:hover {
   color: var(--rojo);
 }
 

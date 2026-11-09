@@ -150,4 +150,21 @@ Las decisiones D-07 a D-13 del dominio del Sprint 2 están en la especificación
 - **Por qué:** El criterio de aceptación pide que ningún servicio mostrado supere el importe máximo (apartado 9.1), y el apartado 4.4 pide que los perfiles sin precio vayan al final.
 - **Estado:** vigente.
 
+## D-31: Controles de formulario propios
+
+- **Qué se decidió:** Sustituir los controles que dibuja el navegador, que no seguían el diseño de la web:
+  - **Desplegables:** cada `<select>` se acompaña de un botón y una lista propios (`cliente/interfaz.js`). La lista es un menú verde pino translúcido con desenfoque, con halo verde y animación al abrirse, y marca con ✓ la opción elegida. El autocompletado de ciudades usa el mismo menú. Se maneja también con el teclado (flechas, Inicio/Fin, Enter, Escape y la inicial de una opción).
+  - **Casillas:** cuadradas con esquinas suaves, verde pino con ✓ blanco al marcarse.
+  - **Confirmaciones:** en vez de la ventana del navegador, el botón de borrar se convierte en «¿Borrar? Sí / No» en el mismo sitio; el aviso de RN-03 al quitar sectores con servicios aparece como un bloque dentro de la página. Renombrar un sector sigue usando el cuadro del navegador.
+- **Por qué:** La lista de un `<select>` y las ventanas `confirm()` las dibuja el sistema operativo y no se pueden adaptar con CSS; rompían la estética de la web (D-23).
+- **Cómo se mantiene el código:** El `<select>` original sigue en la página, oculto, y guarda el valor. El componente redefine `value` y `selectedIndex` en ese elemento y observa sus opciones, así que el resto del código sigue leyendo y asignando `select.value`, sustituyendo opciones y escuchando `change` sin cambios.
+- **Estado:** vigente.
+
+## D-32: Una sola tarjeta de profesional
+
+- **Qué se decidió:** La tarjeta del profesional se dibuja con una única función (`crearTarjeta`, en `cliente/publico.js`) que usan la vista previa de «Mi perfil», los resultados del buscador y la ficha de ejemplo de la página de acceso. Incluye logo o iniciales, nombre, zona, hasta tres fotos, descripción, oficios con su especialidad, medios de contacto, hasta tres servicios con su precio y el pie con el precio de referencia. `GET /api/profesionales` devuelve para cada resultado la descripción, las especialidades, los medios de contacto publicados y las tres primeras fotos.
+- **Por qué:** La vista previa promete al profesional «así te verán los clientes»; con dos tarjetas distintas esa promesa no se cumplía. Con una sola función, no pueden volver a diferenciarse.
+- **Diferencia intencionada:** En el buscador los servicios mostrados son solo los que cumplen los filtros (apartado 4.4); en la vista previa aparecen todos.
+- **Estado:** vigente.
+
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**

@@ -22,7 +22,7 @@ timestamp: 2026-11-06
 - **Páginas públicas:** [cliente/index.html](../cliente/index.html) (buscador, `/`) y [cliente/ficha.html](../cliente/ficha.html) (ficha de un profesional).
 - **Páginas con sesión:** [cliente/acceso.html](../cliente/acceso.html) (inicio de sesión y registro de profesionales y del administrador), [cliente/dashboard.html](../cliente/dashboard.html) («Mi perfil») y [cliente/admin.html](../cliente/admin.html).
 - **Estilos** en [cliente/css/](../cliente/css/): `base.css` común, `ficha.css` (la ficha del profesional, reutilizada en la vista previa, los resultados y la ficha de ejemplo) y una hoja por página.
-- **Comunicación:** un archivo por página (`rest.js` para el acceso, `buscador.js`, `ficha.js`, `perfil.js`, `admin.js`) y dos compartidos: `precio.js` (formato de precios) y `publico.js` (botón de acceso de la barra, enlaces de contacto, logo o iniciales). Todos usan `fetch` contra `/api/...` y pintan el texto con `textContent`, nunca como HTML.
+- **Comunicación:** un archivo por página (`rest.js` para el acceso, `buscador.js`, `ficha.js`, `perfil.js`, `admin.js`) y tres compartidos: `precio.js` (formato de precios), `publico.js` (botón de acceso de la barra, enlaces de contacto, logo o iniciales y la tarjeta del profesional, D-32) e `interfaz.js` (desplegables propios y confirmaciones en el sitio, con su hoja `css/interfaz.css`; D-31). Todos usan `fetch` contra `/api/...` y pintan el texto con `textContent`, nunca como HTML.
 
 ## Frontera exacta
 

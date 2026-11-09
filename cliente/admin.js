@@ -96,8 +96,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  async function eliminar(u) {
-    if (!confirm(`¿Eliminar la cuenta ${u.email}? No podrá iniciar sesión hasta que vuelva a registrarse.`)) return;
+  async function eliminar(u, boton) {
+    if (!(await Interfaz.confirmar(boton, { pregunta: '¿Eliminar esta cuenta?', si: 'Eliminar', no: 'No' }))) return;
     try {
       await peticion('DELETE', `/api/usuarios/${u.id}`);
       mostrarMensaje(`Cuenta ${u.email} eliminada.`, true);
@@ -132,7 +132,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         acciones.appendChild(boton('Comprobar', () => comprobarActivo(u)));
         // El admin no puede eliminarse a sí mismo (RN-09) ni eliminar dos veces la misma cuenta
         if (u.id !== yo.usuario.id && u.estado !== 'eliminado') {
-          acciones.appendChild(boton('Eliminar', () => eliminar(u), true));
+          const botonEliminar = boton('Eliminar', () => eliminar(u, botonEliminar), true);
+          acciones.appendChild(botonEliminar);
         }
         fila.appendChild(acciones);
         tbody.appendChild(fila);
