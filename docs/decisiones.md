@@ -132,4 +132,22 @@ Las decisiones D-07 a D-13 del dominio del Sprint 2 están en la especificación
 - **Por qué:** RN-03 exige confirmación previa. Hacerlo en el servidor garantiza que ningún cliente borre servicios sin haberlo confirmado, y la lista viene del servidor, que es quien sabe qué servicios se perderían.
 - **Estado:** vigente.
 
+## D-28: RN-01 definida una sola vez, en SQL
+
+- **Qué se decidió:** La condición de «perfil publicado» es un único fragmento SQL (`PERFIL_PUBLICADO` en `servidor/datos.js`) que usan el buscador y la ficha pública. «Mi perfil» calcula en la lógica qué falta (RF-16) con los mismos cinco criterios, y las pruebas comprueban que ambos coinciden.
+- **Por qué:** Si la regla estuviera repetida, el buscador y la ficha podrían discrepar. Al aplicarla en la consulta, los perfiles incompletos no llegan ni a contarse, y la paginación es correcta.
+- **Estado:** vigente.
+
+## D-29: El buscador es la página principal
+
+- **Qué se decidió:** `/` es el buscador público; el inicio de sesión y el registro de profesionales pasan a `/acceso.html`, al que se llega con el botón «Acceso profesionales» de la barra (que muestra «Mi perfil» o «Administración» si ya hay sesión).
+- **Por qué:** Quien llega a la web es sobre todo el cliente que busca un profesional, y no tiene cuenta (D-11).
+- **Estado:** vigente.
+
+## D-30: Criterios del filtro de precio y del orden
+
+- **Qué se decidió:** Con importe máximo solo cuentan los servicios que tienen importe y no lo superan: los «a consultar» y los de presupuesto cerrado se ocultan, porque no se puede garantizar que no lo superen; los «desde» cuentan con su importe mínimo. El orden por defecto es por precio ascendente, y los perfiles sin precio de referencia van al final en los dos órdenes por precio. Cada búsqueda es de una sola ciudad.
+- **Por qué:** El criterio de aceptación pide que ningún servicio mostrado supere el importe máximo (apartado 9.1), y el apartado 4.4 pide que los perfiles sin precio vayan al final.
+- **Estado:** vigente.
+
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**

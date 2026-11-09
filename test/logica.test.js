@@ -567,4 +567,158 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     for (let i = 0; i < 30; i++) await logica.crearServicio(usuario, { sectorId, titulo: `Servicio ${i}`, tipoPrecio: 'consultar' });
     await expect(logica.crearServicio(usuario, { sectorId, titulo: 'El 31', tipoPrecio: 'consultar' })).rejects.toThrow('como máximo 30');
   });
+
+  // --- Sprint 2: buscador y ficha pública (RF-18 a RF-21, RN-01) ---
+
+  async function sector(nombre) {
+    return (await logica.listarSectores({ incluirInactivos: true })).find(s => s.nombre === nombre)
+      || await logica.crearSector(nombre);
+  }
+
+  // Crea un profesional con perfil completo en las ciudades indicadas y con los servicios indicados.
+  // servicios: [{ sector: 'Fontanería', titulo, tipoPrecio, importe }]
+  async function publicar(email, { ciudades = ['madrid'], servicios = [], nombre } = {}) {
+    const { usuario } = await crearSesion(email);
+    const nombresSectores = [...new Set(servicios.map(sv => sv.sector))];
+    const sectores = {};
+    for (const n of nombresSectores) sectores[n] = await sector(n);
+    const perfil = await logica.guardarPerfil(usuario, {
+      nombreComercial: nombre || `Negocio de ${email}`,
+      telefono: '600111222',
+      sectores: nombresSectores.map(n => ({ sectorId: sectores[n].id, especialidad: 'General' })),
+      ciudades: await Promise.all(ciudades.map(idCiudad))
+    });
+    for (const sv of servicios) {
+      await logica.crearServicio(usuario, { ...sv, sectorId: sectores[sv.sector].id });
+    }
+    return { usuario, perfilId: perfil.id, sectores };
+  }
+
+  const buscar = async (parametros) => logica.buscarProfesionales({ ciudad: await idCiudad('madrid'), ...parametros });
+
+  test('56. RN-01: Un perfil completo de usuario activo aparece en la búsqueda y está publicado', async () => {
+    const { usuario, perfilId } = await publicar('ana@example.com', {
+      servicios: [{ sector: 'Fontanería', titulo: 'Fugas', tipoPrecio: 'fijo', importe: 40 }]
+    });
+    const resultado = await buscar();
+    expect(resultado.total).toBe(1);
+    expect(resultado.resultados[0]).toEqual(expect.objectContaining({ id: perfilId, sectores: ['Fontanería'], precioReferencia: 40 }));
+    expect((await logica.obtenerPerfil(usuario)).publicacion).toEqual({ publicado: true, faltan: [] });
+  });
+
+  test('57. RN-01: Un perfil sin servicios, o de un usuario pendiente o eliminado, no aparece', async () => {
+    const { usuario: sinServicios } = await publicar('vacio@example.com', { servicios: [] });
+    const { usuario: eliminado } = await publicar('baja@example.com', {
+      servicios: [{ sector: 'Fontanería', titulo: 'Fugas', tipoPrecio: 'fijo', importe: 40 }]
+    });
+    await logica.eliminarUsuario(eliminado, eliminado.id);
+    // Usuario pendiente: se registra pero no confirma; se fuerza su perfil para comprobar la regla en SQL
+    await publicar('pendiente@example.com', { servicios: [{ sector: 'Fontanería', titulo: 'Fugas', tipoPrecio: 'fijo', importe: 40 }] });
+    const pendiente = await datos.buscarPorEmail('pendiente@example.com');
+    await datos.reactivar(pendiente.id, { password: 'x', rol: 'profesional', tokenConfirmacion: 't', tokenExpira: Date.now() });
+
+    expect((await buscar()).total).toBe(0);
+    expect((await logica.obtenerPerfil(sinServicios)).publicacion).toEqual({ publicado: false, faltan: ['un sector', 'un servicio'] });
+  });
+
+  test('58. RN-04: Los servicios de un sector desactivado no cuentan para publicar ni para buscar', async () => {
+    const { sectores } = await publicar('ana@example.com', {
+      servicios: [{ sector: 'Mudanzas', titulo: 'Piso pequeño', tipoPrecio: 'fijo', importe: 300 }]
+    });
+    expect((await buscar()).total).toBe(1);
+    await logica.cambiarEstadoSector(sectores.Mudanzas.id, false);
+    expect((await buscar()).total).toBe(0);
+  });
+
+  test('59. RF-18: Búsqueda por ciudad y sector', async () => {
+    await publicar('madrid-fon@example.com', { ciudades: ['madrid'], servicios: [
+      { sector: 'Fontanería', titulo: 'Fugas', tipoPrecio: 'fijo', importe: 40 },
+      { sector: 'Pintura', titulo: 'Salón', tipoPrecio: 'fijo', importe: 200 }
+    ] });
+    await publicar('madrid-pin@example.com', { ciudades: ['madrid'], servicios: [{ sector: 'Pintura', titulo: 'Piso', tipoPrecio: 'fijo', importe: 900 }] });
+    await publicar('vigo-fon@example.com', { ciudades: ['vigo'], servicios: [{ sector: 'Fontanería', titulo: 'Fugas', tipoPrecio: 'fijo', importe: 30 }] });
+
+    const fontaneria = await sector('Fontanería');
+    const resultado = await buscar({ sector: String(fontaneria.id) });
+    expect(resultado.total).toBe(1);
+    expect(resultado.resultados[0].nombreComercial).toBe('Negocio de madrid-fon@example.com');
+    // Solo se muestran los servicios que cumplen el filtro
+    expect(resultado.resultados[0].servicios.map(sv => sv.titulo)).toEqual(['Fugas']);
+    expect((await buscar()).total).toBe(2);
+  });
+
+  test('60. RF-19: Con importe máximo ningún servicio mostrado lo supera; filtro por tipo de precio', async () => {
+    await publicar('ana@example.com', { servicios: [
+      { sector: 'Fontanería', titulo: 'Grifo', tipoPrecio: 'fijo', importe: 40 },
+      { sector: 'Fontanería', titulo: 'Caldera', tipoPrecio: 'fijo', importe: 900 },
+      { sector: 'Fontanería', titulo: 'Proyecto', tipoPrecio: 'consultar' }
+    ] });
+    await publicar('caro@example.com', { servicios: [{ sector: 'Fontanería', titulo: 'Reforma', tipoPrecio: 'desde', importe: 3000 }] });
+
+    const barato = await buscar({ max: '100' });
+    expect(barato.total).toBe(1);
+    barato.resultados.forEach(r => r.servicios.forEach(sv => expect(sv.importe).toBeLessThanOrEqual(100)));
+    expect(barato.resultados[0].servicios.map(sv => sv.titulo)).toEqual(['Grifo']);
+
+    const consultar = await buscar({ tipo: 'consultar' });
+    expect(consultar.resultados.map(r => r.servicios.map(sv => sv.titulo))).toEqual([['Proyecto']]);
+  });
+
+  test('61. RF-20: Orden por precio de referencia, con «a consultar» y presupuesto cerrado al final', async () => {
+    await publicar('medio@example.com', { nombre: 'Medio', servicios: [{ sector: 'Fontanería', titulo: 'A', tipoPrecio: 'fijo', importe: 50 }] });
+    await publicar('consulta@example.com', { nombre: 'Consulta', servicios: [{ sector: 'Fontanería', titulo: 'B', tipoPrecio: 'consultar' }] });
+    await publicar('barato@example.com', { nombre: 'Barato', servicios: [
+      { sector: 'Fontanería', titulo: 'C', tipoPrecio: 'fijo', importe: 300 },
+      { sector: 'Fontanería', titulo: 'D', tipoPrecio: 'hora', importe: 20 }
+    ] });
+    await publicar('presu@example.com', { nombre: 'Presupuesto', servicios: [{ sector: 'Fontanería', titulo: 'E', tipoPrecio: 'presupuesto' }] });
+
+    const nombres = async (orden) => (await buscar({ orden })).resultados.map(r => r.nombreComercial);
+    const ascendente = await nombres('precio-asc');
+    expect(ascendente.slice(0, 2)).toEqual(['Barato', 'Medio']);
+    expect(ascendente.slice(2).sort()).toEqual(['Consulta', 'Presupuesto']);
+    const descendente = await nombres('precio-desc');
+    expect(descendente.slice(0, 2)).toEqual(['Medio', 'Barato']);
+    expect((await buscar()).resultados[0].precioReferencia).toBe(20);
+    expect(await nombres('recientes')).toHaveLength(4);
+  });
+
+  test('62. RF-20: Paginación de 20 resultados', async () => {
+    for (let i = 0; i < 21; i++) {
+      await publicar(`p${i}@example.com`, { servicios: [{ sector: 'Fontanería', titulo: 'Fugas', tipoPrecio: 'fijo', importe: 10 + i }] });
+    }
+    const primera = await buscar();
+    const segunda = await buscar({ pagina: '2' });
+    expect(primera).toEqual(expect.objectContaining({ total: 21, paginas: 2, pagina: 1 }));
+    expect(primera.resultados).toHaveLength(20);
+    expect(segunda.resultados).toHaveLength(1);
+    expect(segunda.resultados[0].precioReferencia).toBe(30);
+  });
+
+  test('63. RF-18 Error: Ciudad obligatoria y parámetros no válidos', async () => {
+    await expect(logica.buscarProfesionales({})).rejects.toThrow('Elige una ciudad');
+    await expect(logica.buscarProfesionales({ ciudad: '999999' })).rejects.toThrow('no está en el catálogo');
+    await expect(buscar({ orden: 'DROP TABLE' })).rejects.toThrow('Orden no válido');
+    await expect(buscar({ tipo: 'gratis' })).rejects.toThrow('Tipo de precio no válido');
+    await expect(buscar({ max: '-3' })).rejects.toThrow();
+    await expect(buscar({ pagina: '0' })).rejects.toThrow('Página no válida');
+  });
+
+  test('64. RF-21: Ficha pública sin el email de acceso (RNF-11); no visible si no está publicada', async () => {
+    const { usuario, perfilId } = await publicar('secreto@example.com', {
+      nombre: 'Fontanería Discreta',
+      servicios: [{ sector: 'Fontanería', titulo: 'Fugas', tipoPrecio: 'fijo', importe: 40 }]
+    });
+    const ficha = await logica.obtenerFichaPublica(perfilId);
+    expect(ficha).toEqual(expect.objectContaining({
+      nombreComercial: 'Fontanería Discreta',
+      contacto: { telefono: '600111222' },
+      sectores: [expect.objectContaining({ nombre: 'Fontanería', especialidad: 'General' })]
+    }));
+    expect(ficha.servicios.map(sv => sv.titulo)).toEqual(['Fugas']);
+    expect(JSON.stringify(ficha)).not.toContain('secreto@');
+
+    await logica.eliminarUsuario(usuario, usuario.id);
+    await expect(logica.obtenerFichaPublica(perfilId)).rejects.toThrow('no está disponible');
+  });
 });

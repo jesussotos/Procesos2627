@@ -84,13 +84,13 @@ app.post('/api/usuarios/login', async (req, res) => {
   }
 });
 
-// Enlace que llega por correo: confirma la cuenta y vuelve a la página de inicio con el resultado
+// Enlace que llega por correo: confirma la cuenta y vuelve a la página de acceso con el resultado
 app.get('/api/usuarios/confirmar', async (req, res) => {
   try {
     await logica.confirmarCuenta(req.query.token);
-    res.redirect('/?confirmacion=ok');
+    res.redirect('/acceso.html?confirmacion=ok');
   } catch (error) {
-    res.redirect(`/?confirmacion=error&motivo=${encodeURIComponent(error.message)}`);
+    res.redirect(`/acceso.html?confirmacion=error&motivo=${encodeURIComponent(error.message)}`);
   }
 });
 
@@ -290,6 +290,28 @@ app.get('/api/imagenes/:id', async (req, res) => {
     res.set('Cache-Control', 'public, max-age=86400');
     res.set('X-Content-Type-Options', 'nosniff');
     res.send(imagen.datos);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+// --- BUSCADOR Y FICHA PÚBLICA (RF-18 a RF-21) ---
+// Públicas y de solo lectura: el visitante no tiene cuenta
+
+// /api/profesionales?ciudad=ID&sector=ID&tipo=fijo&max=50&orden=precio-asc&pagina=1
+app.get('/api/profesionales', async (req, res) => {
+  try {
+    res.json(await logica.buscarProfesionales(req.query));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+app.get('/api/profesionales/:id', async (req, res) => {
+  const id = leerId(req, res);
+  if (id === null) return;
+  try {
+    res.json(await logica.obtenerFichaPublica(id));
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
   }

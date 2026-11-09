@@ -7,14 +7,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Seguridad en el cliente: si no hay token o no es admin, fuera (el servidor también lo comprueba)
   if (!token || rol !== 'admin') {
-    window.location.href = '/index.html';
+    window.location.href = '/acceso.html';
     return;
   }
 
   function cerrarSesion() {
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('rol');
-    window.location.href = '/index.html';
+    window.location.href = '/acceso.html';
   }
   document.getElementById('btn-logout').addEventListener('click', cerrarSesion);
 

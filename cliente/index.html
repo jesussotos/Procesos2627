@@ -3,116 +3,104 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Oficios · Profesionales a domicilio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&display=swap">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/ficha.css">
-  <link rel="stylesheet" href="css/acceso.css">
+  <link rel="stylesheet" href="css/buscador.css">
+  <title>Oficios · Profesionales a domicilio en tu ciudad</title>
+  <meta name="description" content="Encuentra fontaneros, electricistas, pintores y otros profesionales a domicilio en tu ciudad, con sus precios a la vista.">
 </head>
 <body>
 
   <header class="barra">
     <div class="contenedor">
       <a class="marca" href="/">Oficios</a>
+      <div class="barra-sesion">
+        <a class="btn-barra" id="acceso-barra" href="/acceso.html">Acceso profesionales</a>
+      </div>
     </div>
   </header>
 
-  <main class="acceso">
-    <section class="acceso-portada">
+  <section class="banda buscador-banda">
+    <div class="contenedor">
       <div>
-        <h1>Tu oficio, a la vista de quien te necesita.</h1>
-        <p>Publica tu ficha con tus servicios, tus precios y las ciudades donde trabajas. Los clientes de tu zona te encuentran y te contactan directamente, sin intermediarios.</p>
+        <h1 class="titulo">Encuentra un profesional de confianza cerca de ti.</h1>
+        <p class="subtitulo">Fontaneros, electricistas, pintores y otros oficios que trabajan a domicilio en tu ciudad, con sus precios a la vista.</p>
       </div>
+      <form id="form-busqueda" class="busqueda" role="search" novalidate>
+        <div class="form-group buscador-ciudad">
+          <label for="busqueda-ciudad">Ciudad</label>
+          <input id="busqueda-ciudad" type="text" autocomplete="off" placeholder="¿Dónde lo necesitas?">
+          <ul id="sugerencias" class="sugerencias" role="listbox" hidden></ul>
+        </div>
+        <div class="form-group">
+          <label for="busqueda-sector">Oficio</label>
+          <select id="busqueda-sector">
+            <option value="">Todos los oficios</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Buscar</button>
+      </form>
+    </div>
+  </section>
 
-      <div class="acceso-ejemplo" aria-hidden="true">
-        <p>Así verán los clientes tu ficha</p>
-        <article class="ficha">
-          <div class="ficha-cabecera">
-            <div class="ficha-logo">FP</div>
-            <div>
-              <h3 class="ficha-nombre">Fontanería Pérez</h3>
-              <p class="ficha-zona">Madrid, Majadahonda y Pozuelo de Alarcón</p>
-            </div>
-          </div>
-          <div class="ficha-cuerpo">
-            <ul class="ficha-sectores">
-              <li><strong>Fontanería</strong><span>Calderas, calentadores y fugas</span></li>
-              <li><strong>Climatización</strong><span>Instalación de aire acondicionado</span></li>
-            </ul>
-            <div class="ficha-contacto"><span>Teléfono</span><span>WhatsApp</span><span>Web</span></div>
-            <div class="ficha-precio">Reparación de fugas <strong>desde 40 €</strong></div>
-          </div>
-        </article>
-      </div>
+  <main class="contenedor buscador-cuerpo">
+    <div id="mensaje" class="alert" role="status"></div>
+
+    <!-- Antes de buscar: los oficios del catálogo (RF-17) -->
+    <section id="inicio" class="inicio">
+      <h2>Busca por oficio</h2>
+      <p class="ayuda">Elige un oficio y después tu ciudad.</p>
+      <div id="atajos-sectores" class="atajos"></div>
     </section>
 
-    <section class="acceso-panel">
-      <div class="acceso-formulario">
-
-        <!-- Iniciar sesión / crear cuenta -->
-        <div id="auth-container">
-          <h2>Tu cuenta de profesional</h2>
-          <p class="intro">Entra para gestionar tu ficha o crea una cuenta nueva.</p>
-
-          <div class="tabs" role="tablist">
-            <button id="tab-login" class="tab-btn active" type="button" onclick="mostrarFormulario('login')">Iniciar sesión</button>
-            <button id="tab-registro" class="tab-btn" type="button" onclick="mostrarFormulario('registro')">Crear cuenta</button>
+    <!-- Resultados (RF-18 a RF-20) -->
+    <section id="resultados" hidden>
+      <div class="resultados-cabecera">
+        <h2 id="resumen" aria-live="polite"></h2>
+        <div class="filtros">
+          <div class="form-group">
+            <label for="filtro-tipo">Tipo de precio</label>
+            <select id="filtro-tipo">
+              <option value="">Cualquiera</option>
+              <option value="fijo">Precio fijo</option>
+              <option value="hora">Por hora</option>
+              <option value="unidad">Por unidad</option>
+              <option value="desde">Desde</option>
+              <option value="consultar">A consultar</option>
+              <option value="presupuesto">Presupuesto cerrado</option>
+            </select>
           </div>
-
-          <div id="mensaje" class="alert" role="status"></div>
-
-          <form id="form-login" class="form-panel active">
-            <div class="form-group">
-              <label for="login-email">Correo electrónico</label>
-              <input type="email" id="login-email" autocomplete="email" required>
+          <div class="form-group">
+            <label for="filtro-max">Importe máximo</label>
+            <div class="con-sufijo">
+              <input id="filtro-max" type="text" inputmode="decimal" placeholder="Sin límite">
+              <span>€</span>
             </div>
-            <div class="form-group">
-              <label for="login-password">Contraseña</label>
-              <input type="password" id="login-password" autocomplete="current-password" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Iniciar sesión</button>
-          </form>
-
-          <form id="form-registro" class="form-panel">
-            <div class="form-group">
-              <label for="reg-email">Correo electrónico</label>
-              <input type="email" id="reg-email" autocomplete="email" required>
-            </div>
-            <div class="form-group">
-              <label for="reg-password">Contraseña</label>
-              <input type="password" id="reg-password" autocomplete="new-password" required>
-            </div>
-            <p class="ayuda">Te enviaremos un correo para confirmar la cuenta.</p>
-            <button type="submit" class="btn btn-primary">Crear cuenta</button>
-          </form>
+          </div>
+          <div class="form-group">
+            <label for="filtro-orden">Ordenar por</label>
+            <select id="filtro-orden">
+              <option value="precio-asc">Más baratos primero</option>
+              <option value="precio-desc">Más caros primero</option>
+              <option value="recientes">Más recientes</option>
+            </select>
+          </div>
         </div>
-
-        <!-- Sesión ya iniciada -->
-        <div id="session-container" class="acceso-sesion" style="display: none;">
-          <h2>Ya has iniciado sesión</h2>
-          <p id="user-info" class="ayuda">Sesión activa</p>
-          <a id="ir-panel" class="btn btn-primary" href="/dashboard.html">Ir a mi panel</a>
-          <button id="btn-logout" class="btn btn-secondary" type="button">Cerrar sesión</button>
-        </div>
-
       </div>
+      <div id="lista-resultados" class="lista-resultados"></div>
+      <nav id="paginacion" class="paginacion" aria-label="Páginas de resultados" hidden>
+        <button type="button" class="btn btn-secondary" id="pagina-anterior">Anterior</button>
+        <span id="pagina-actual"></span>
+        <button type="button" class="btn btn-secondary" id="pagina-siguiente">Siguiente</button>
+      </nav>
     </section>
   </main>
 
-  <script src="rest.js"></script>
-  <script>
-    function mostrarFormulario(modo) {
-      const esLogin = modo === 'login';
-      const mensaje = document.getElementById('mensaje');
-      mensaje.style.display = 'none';
-      mensaje.textContent = '';
-      document.getElementById('form-login').classList.toggle('active', esLogin);
-      document.getElementById('form-registro').classList.toggle('active', !esLogin);
-      document.getElementById('tab-login').classList.toggle('active', esLogin);
-      document.getElementById('tab-registro').classList.toggle('active', !esLogin);
-    }
-  </script>
+  <script src="precio.js"></script>
+  <script src="publico.js"></script>
+  <script src="buscador.js"></script>
 </body>
 </html>

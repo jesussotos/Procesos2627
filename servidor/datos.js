@@ -204,6 +204,49 @@ function aSector(fila) {
   return { id: fila.id, nombre: fila.nombre, activo: Boolean(fila.activo) };
 }
 
+// RN-01: un perfil está publicado si su usuario está activo y tiene nombre comercial, algún dato de
+// contacto, al menos una ciudad y al menos un servicio en un sector activo (lo que implica tener sector,
+// porque RN-03 obliga a que el sector del servicio sea del perfil). Se usa con los alias p (perfiles)
+// y u (usuarios). Es la única definición de la regla: la comparten el buscador y la ficha pública.
+const PERFIL_PUBLICADO = `
+  u.estado = 'activo'
+  AND p.nombre_comercial <> ''
+  AND (p.telefono IS NOT NULL OR p.email_contacto IS NOT NULL OR p.web IS NOT NULL OR p.whatsapp IS NOT NULL)
+  AND EXISTS (SELECT 1 FROM perfil_ciudades pcx WHERE pcx.perfil_id = p.id)
+  AND EXISTS (SELECT 1 FROM servicios svx JOIN sectores sx ON sx.id = svx.sector_id AND sx.activo = 1
+              WHERE svx.perfil_id = p.id)
+`;
+
+// Filtros de servicio del buscador, como condición SQL sobre el alias sv y sus argumentos
+function filtrosDeServicio({ sectorId, tipoPrecio, maxCentimos }) {
+  const condiciones = [];
+  const args = [];
+  if (sectorId) {
+    condiciones.push('sv.sector_id = ?');
+    args.push(sectorId);
+  }
+  if (tipoPrecio) {
+    condiciones.push('sv.tipo_precio = ?');
+    args.push(tipoPrecio);
+  }
+  if (maxCentimos) {
+    // Con importe máximo solo cuentan los servicios que tienen importe y no lo superan
+    condiciones.push('sv.importe_centimos IS NOT NULL AND sv.importe_centimos <= ?');
+    args.push(maxCentimos);
+  }
+  return { sql: condiciones.length ? `AND ${condiciones.join(' AND ')}` : '', args };
+}
+
+// Órdenes permitidos (RF-20). Los perfiles sin precio de referencia van al final al ordenar por precio
+const ORDENES = {
+  'precio-asc': 'referencia IS NULL, referencia ASC, actualizado DESC, p.id',
+  'precio-desc': 'referencia IS NULL, referencia DESC, actualizado DESC, p.id',
+  recientes: 'actualizado DESC, p.id'
+};
+
+// «?, ?, ?» para una lista de valores en una consulta IN (...)
+const huecos = (lista) => lista.map(() => '?').join(', ');
+
 async function buscarUno(sql, args) {
   const resultado = await consultar(sql, args);
   return aObjetos(resultado)[0] || null;
@@ -447,6 +490,92 @@ module.exports = {
     for (const sectorId of sectorIds) {
       await consultar('DELETE FROM servicios WHERE perfil_id = ? AND sector_id = ?', [perfilId, sectorId]);
     }
+  },
+
+  // --- Buscador y ficha pública (RF-18 a RF-21) ---
+
+  // Una página de profesionales publicados que trabajan en la ciudad y tienen algún servicio que cumple
+  // los filtros. referencia = menor importe entre esos servicios (apartado 4.4; NULL si ninguno tiene).
+  buscarProfesionales: async ({ ciudadId, sectorId, tipoPrecio, maxCentimos, orden, limite, desplazamiento }) => {
+    const filtros = filtrosDeServicio({ sectorId, tipoPrecio, maxCentimos });
+    const desde = `
+      FROM perfiles p
+      JOIN usuarios u ON u.id = p.usuario_id
+      JOIN perfil_ciudades pc ON pc.perfil_id = p.id AND pc.ciudad_id = ?
+      JOIN servicios sv ON sv.perfil_id = p.id
+      JOIN sectores s ON s.id = sv.sector_id AND s.activo = 1
+      WHERE ${PERFIL_PUBLICADO} ${filtros.sql}`;
+    const args = [ciudadId, ...filtros.args];
+
+    const total = await consultar(`SELECT COUNT(DISTINCT p.id) AS total ${desde}`, args);
+    const pagina = await consultar(
+      `SELECT p.id, MIN(sv.importe_centimos) AS referencia, p.actualizado AS actualizado
+       ${desde}
+       GROUP BY p.id
+       ORDER BY ${ORDENES[orden]}
+       LIMIT ? OFFSET ?`,
+      [...args, limite, desplazamiento]
+    );
+    return { total: Number(aObjetos(total)[0].total), filas: aObjetos(pagina) };
+  },
+
+  // Datos de varios perfiles de una vez (evita una consulta por resultado)
+  perfilesPorIds: async (ids) => {
+    if (ids.length === 0) return [];
+    const resultado = await consultar(
+      `SELECT p.id, p.usuario_id, p.nombre_comercial, p.descripcion, p.telefono, p.email_contacto, p.web,
+              p.whatsapp, p.actualizado,
+              (SELECT i.id FROM imagenes i WHERE i.usuario_id = p.usuario_id AND i.tipo = 'logo') AS logo_id
+       FROM perfiles p WHERE p.id IN (${huecos(ids)})`,
+      ids
+    );
+    return aObjetos(resultado);
+  },
+
+  // Sectores activos de varios perfiles, con su especialidad
+  sectoresActivosDePerfiles: async (ids) => {
+    if (ids.length === 0) return [];
+    const resultado = await consultar(
+      `SELECT ps.perfil_id, s.id, s.nombre, ps.especialidad
+       FROM perfil_sectores ps JOIN sectores s ON s.id = ps.sector_id AND s.activo = 1
+       WHERE ps.perfil_id IN (${huecos(ids)}) ORDER BY s.nombre`,
+      ids
+    );
+    return aObjetos(resultado);
+  },
+
+  ciudadesDePerfiles: async (ids) => {
+    if (ids.length === 0) return [];
+    const resultado = await consultar(
+      `SELECT pc.perfil_id, c.id, c.nombre, c.provincia
+       FROM perfil_ciudades pc JOIN ciudades c ON c.id = pc.ciudad_id
+       WHERE pc.perfil_id IN (${huecos(ids)}) ORDER BY c.nombre`,
+      ids
+    );
+    return aObjetos(resultado);
+  },
+
+  // Servicios en sectores activos de varios perfiles; con filtros, solo los que los cumplen
+  serviciosPublicosDePerfiles: async (ids, filtrosBusqueda = {}) => {
+    if (ids.length === 0) return [];
+    const filtros = filtrosDeServicio(filtrosBusqueda);
+    const resultado = await consultar(
+      `SELECT sv.*, s.nombre AS sector_nombre
+       FROM servicios sv JOIN sectores s ON s.id = sv.sector_id AND s.activo = 1
+       WHERE sv.perfil_id IN (${huecos(ids)}) ${filtros.sql}
+       ORDER BY s.nombre, sv.importe_centimos IS NULL, sv.importe_centimos, sv.id`,
+      [...ids, ...filtros.args]
+    );
+    return aObjetos(resultado);
+  },
+
+  // Perfil solo si está publicado (RN-01); null en cualquier otro caso
+  perfilPublicado: async (perfilId) => {
+    return buscarUno(
+      `SELECT p.id FROM perfiles p JOIN usuarios u ON u.id = p.usuario_id
+       WHERE p.id = ? AND ${PERFIL_PUBLICADO}`,
+      [perfilId]
+    );
   },
 
   // --- Imágenes (logo y fotos de trabajos) ---

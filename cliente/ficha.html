@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ficha del profesional · Oficios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&display=swap">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/ficha.css">
+  <link rel="stylesheet" href="css/ficha-publica.css">
+</head>
+<body>
+
+  <header class="barra">
+    <div class="contenedor">
+      <a class="marca" href="/">Oficios</a>
+      <div class="barra-sesion">
+        <a class="btn-barra" id="acceso-barra" href="/acceso.html">Acceso profesionales</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="banda ficha-banda">
+    <div class="contenedor">
+      <a class="volver" id="volver" href="/">Volver a la búsqueda</a>
+      <div class="ficha-identidad">
+        <div class="ficha-logo ficha-logo-grande" id="ficha-logo"></div>
+        <div>
+          <h1 class="titulo" id="ficha-nombre">Cargando...</h1>
+          <p class="subtitulo" id="ficha-sectores"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="contenedor ficha-cuerpo-publica">
+    <div id="mensaje" class="alert" role="status"></div>
+
+    <div class="ficha-columnas" id="ficha-contenido" hidden>
+      <div class="ficha-principal">
+        <section class="panel" id="bloque-descripcion" hidden>
+          <div class="panel-cabecera"><h2>Sobre nosotros</h2></div>
+          <p class="ficha-texto" id="ficha-descripcion"></p>
+        </section>
+
+        <section class="panel" id="bloque-fotos" hidden>
+          <div class="panel-cabecera"><h2>Trabajos realizados</h2></div>
+          <div class="galeria" id="ficha-fotos"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-cabecera"><h2>Servicios y precios</h2></div>
+          <div id="ficha-servicios"></div>
+        </section>
+      </div>
+
+      <aside class="ficha-lateral">
+        <section class="panel">
+          <div class="panel-cabecera">
+            <h2>Contacto</h2>
+            <p>Contacta directamente con el profesional.</p>
+          </div>
+          <div class="botones-contacto" id="ficha-contacto"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-cabecera"><h2>Zona de trabajo</h2></div>
+          <ul class="lista-ciudades" id="ficha-ciudades"></ul>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <script src="precio.js"></script>
+  <script src="publico.js"></script>
+  <script src="ficha.js"></script>
+</body>
+</html>

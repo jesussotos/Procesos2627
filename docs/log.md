@@ -4,6 +4,7 @@ Este bundle documenta el estado comprobable del repositorio; la última actualiz
 
 ## Cronología
 
+- 2026-11-09 · Rama `feat/buscador`: buscador público en `/` con filtros en la URL, ficha pública, RN-01 en SQL y estado de publicación en «Mi perfil» (RF-16 a RF-21; D-28 a D-30); el acceso pasa a `/acceso.html`; 64 pruebas.
 - 2026-11-09 · Rama `feat/servicios`: servicios con seis tipos de precio, importes en céntimos y confirmación al quitar sectores (RF-14, RF-15, RN-03, RN-06; D-25 a D-27); 55 pruebas.
 - 2026-11-06 · Logo y fotos de trabajos opcionales en el perfil (RF-23, D-24); 44 pruebas.
 - 2026-11-06 · Rediseño visual en verde pino (D-23): estilos en `cliente/css/`, JavaScript de cada página en su archivo, ficha de ejemplo en el acceso y vista previa con progreso en «Mi perfil».

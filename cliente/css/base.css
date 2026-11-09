@@ -127,6 +127,27 @@ a {
   color: #FFFFFF;
 }
 
+/* Botón de la barra verde (acceso profesionales, mi perfil...) */
+.btn-barra {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 4px 14px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  white-space: nowrap;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--radio);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-barra:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #FFFFFF;
+}
+
 /* Banda que continúa la barra con el título de la página */
 .banda {
   background: var(--pino-profundo);
