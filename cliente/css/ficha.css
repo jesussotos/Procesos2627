@@ -218,6 +218,29 @@
   color: var(--grafito);
 }
 
+/* Pie: precio de referencia y acceso a la ficha */
+.ficha-pie {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 22px;
+  font-size: 0.875rem;
+  color: var(--grafito);
+  background: var(--fondo);
+  border-top: 1px solid var(--linea);
+}
+
+.ficha-pie strong {
+  font-size: 1.0625rem;
+  color: var(--tinta);
+}
+
+.ficha-ver {
+  font-weight: 600;
+  color: var(--pino);
+}
+
 .ficha-vacia {
   font-size: 0.8125rem;
   color: var(--tenue);

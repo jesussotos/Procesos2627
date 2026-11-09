@@ -160,4 +160,11 @@ Las decisiones D-07 a D-13 del dominio del Sprint 2 están en la especificación
 - **Cómo se mantiene el código:** El `<select>` original sigue en la página, oculto, y guarda el valor. El componente redefine `value` y `selectedIndex` en ese elemento y observa sus opciones, así que el resto del código sigue leyendo y asignando `select.value`, sustituyendo opciones y escuchando `change` sin cambios.
 - **Estado:** vigente.
 
+## D-32: Una sola tarjeta de profesional
+
+- **Qué se decidió:** La tarjeta del profesional se dibuja con una única función (`crearTarjeta`, en `cliente/publico.js`) que usan la vista previa de «Mi perfil», los resultados del buscador y la ficha de ejemplo de la página de acceso. Incluye logo o iniciales, nombre, zona, hasta tres fotos, descripción, oficios con su especialidad, medios de contacto, hasta tres servicios con su precio y el pie con el precio de referencia. `GET /api/profesionales` devuelve para cada resultado la descripción, las especialidades, los medios de contacto publicados y las tres primeras fotos.
+- **Por qué:** La vista previa promete al profesional «así te verán los clientes»; con dos tarjetas distintas esa promesa no se cumplía. Con una sola función, no pueden volver a diferenciarse.
+- **Diferencia intencionada:** En el buscador los servicios mostrados son solo los que cumplen los filtros (apartado 4.4); en la vista previa aparecen todos.
+- **Estado:** vigente.
+
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**

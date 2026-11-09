@@ -267,6 +267,12 @@ async function servicioPropio(usuario, id) {
 const RESULTADOS_POR_PAGINA = 20;
 const ORDENES_BUSQUEDA = ['precio-asc', 'precio-desc', 'recientes'];
 const SERVICIOS_POR_RESULTADO = 3;
+const FOTOS_POR_RESULTADO = 3;
+
+// Medios de contacto publicados, solo sus nombres (la tarjeta del buscador no muestra los datos)
+function mediosDeContacto(perfil) {
+  return ['telefono', 'whatsapp', 'email', 'web'].filter((medio) => contactoPublico(perfil)[medio]);
+}
 
 // Los parámetros llegan como texto desde la URL; vacío equivale a no indicarlo
 function idOpcional(valor, mensaje) {
@@ -771,15 +777,25 @@ const logica = {
     const sectores = agruparPorPerfil(await datos.sectoresActivosDePerfiles(ids));
     const ciudades = agruparPorPerfil(await datos.ciudadesDePerfiles(ids));
     const servicios = agruparPorPerfil(await datos.serviciosPublicosDePerfiles(ids, filtros));
+    const fotosPorUsuario = {};
+    (await datos.fotosDeUsuarios(Object.values(perfiles).map((p) => p.usuario_id))).forEach((foto) => {
+      (fotosPorUsuario[foto.usuario_id] = fotosPorUsuario[foto.usuario_id] || []).push(foto);
+    });
 
+    // Cada resultado lleva lo mismo que la tarjeta de la vista previa de «Mi perfil» (D-32)
     const resultados = filas.map((fila) => {
       const perfil = perfiles[fila.id];
       const coincidentes = (servicios[fila.id] || []).map(aServicioPublico);
+      const fotos = fotosPorUsuario[perfil.usuario_id] || [];
       return {
         id: fila.id,
         nombreComercial: perfil.nombre_comercial,
         logo: perfil.logo_id ? { url: urlImagen(perfil.logo_id) } : null,
-        sectores: (sectores[fila.id] || []).map((s) => s.nombre),
+        descripcion: perfil.descripcion || '',
+        fotos: fotos.slice(0, FOTOS_POR_RESULTADO).map((f) => ({ url: urlImagen(f.id) })),
+        totalFotos: fotos.length,
+        contacto: mediosDeContacto(perfil),
+        sectores: (sectores[fila.id] || []).map(({ nombre, especialidad }) => ({ nombre, especialidad })),
         ciudades: (ciudades[fila.id] || []).map(({ id, nombre, provincia }) => ({ id, nombre, provincia })),
         precioReferencia: fila.referencia === null ? null : fila.referencia / 100,
         serviciosCoincidentes: coincidentes.length,

@@ -150,5 +150,29 @@ document.addEventListener('DOMContentLoaded', () => {
     window.history.replaceState({}, '', window.location.pathname);
   }
 
+  // Ficha de ejemplo para el profesional: la misma tarjeta que verán los clientes (D-32)
+  const ejemplo = document.getElementById('ficha-ejemplo');
+  if (ejemplo) {
+    ejemplo.replaceChildren(crearTarjeta({
+      nombreComercial: 'Fontanería Pérez',
+      logo: null,
+      zona: 'Madrid, Majadahonda y Pozuelo de Alarcón',
+      fotos: [],
+      totalFotos: 0,
+      descripcion: 'Más de 15 años reparando instalaciones de agua y gas. Urgencias en el día.',
+      sectores: [
+        { nombre: 'Fontanería', especialidad: 'Calderas, calentadores y fugas' },
+        { nombre: 'Climatización', especialidad: 'Instalación de aire acondicionado' }
+      ],
+      contacto: ['telefono', 'whatsapp', 'web'],
+      servicios: [
+        { titulo: 'Reparación de fugas', tipoPrecio: 'fijo', importe: 45, ivaIncluido: true },
+        { titulo: 'Revisión de caldera', tipoPrecio: 'presupuesto', presupuestoGratis: true }
+      ],
+      totalServicios: 2,
+      precioReferencia: 45
+    }));
+  }
+
   verificarSesion();
 });
