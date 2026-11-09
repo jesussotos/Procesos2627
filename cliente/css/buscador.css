@@ -31,7 +31,7 @@
 }
 
 .busqueda input,
-.busqueda select,
+.busqueda .desplegable-boton,
 .busqueda .btn {
   min-height: 46px;
 }
@@ -44,45 +44,11 @@
   position: relative;
 }
 
-.sugerencias {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 10;
-  max-height: 300px;
-  overflow-y: auto;
-  list-style: none;
-  color: var(--tinta);
-  background: var(--superficie);
-  border: 1px solid var(--linea-fuerte);
-  border-radius: var(--radio);
-  box-shadow: 0 12px 28px rgba(26, 29, 31, 0.12);
-}
 
-.sugerencias li {
-  padding: 10px 12px;
-  cursor: pointer;
-}
 
-.sugerencias li + li {
-  border-top: 1px solid var(--linea);
-}
 
-.sugerencias li[role=option]:hover,
-.sugerencias li[aria-selected=true] {
-  background: var(--pino-claro);
-}
 
-.sugerencias small {
-  margin-left: 6px;
-  color: var(--grafito);
-}
 
-.sugerencias .sin-resultados {
-  color: var(--grafito);
-  cursor: default;
-}
 
 .buscador-cuerpo {
   padding-top: 36px;

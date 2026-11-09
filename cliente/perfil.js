@@ -62,8 +62,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-logout').addEventListener('click', cerrarSesion);
 
   // RF-09: el profesional elimina su propia cuenta (borrado lógico)
-  document.getElementById('btn-eliminar').addEventListener('click', async () => {
-    if (!confirm('¿Seguro que quieres eliminar tu cuenta? Podrás volver a registrarte con el mismo correo.')) return;
+  document.getElementById('btn-eliminar').addEventListener('click', async (e) => {
+    if (!(await Interfaz.confirmar(e.currentTarget, { pregunta: '¿Eliminar tu cuenta?', si: 'Sí, eliminar' }))) return;
     try {
       await peticion('DELETE', '/api/usuarios/me');
       localStorage.removeItem('jwt_token');
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       quitar.type = 'button';
       quitar.textContent = '×';
       quitar.title = 'Quitar esta foto';
-      quitar.addEventListener('click', () => quitarFoto(foto));
+      quitar.addEventListener('click', () => quitarFoto(foto, quitar));
       marco.append(img, quitar);
       return marco;
     }));
@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('quitar-logo').addEventListener('click', async () => {
-    if (!confirm('¿Quitar el logo de tu ficha?')) return;
+    if (!(await Interfaz.confirmar(document.getElementById('quitar-logo'), { pregunta: '¿Quitar el logo?', si: 'Quitar' }))) return;
     try {
       await peticion('DELETE', '/api/perfil/logo');
       logo = null;
@@ -385,8 +385,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  async function quitarFoto(foto) {
-    if (!confirm('¿Quitar esta foto de tu ficha?')) return;
+  async function quitarFoto(foto, boton) {
+    if (!(await Interfaz.confirmar(boton, { pregunta: '¿Quitar la foto?', si: 'Quitar', no: 'No' }))) return;
     try {
       await peticion('DELETE', `/api/perfil/fotos/${foto.id}`);
       fotos = fotos.filter(f => f.id !== foto.id);
@@ -515,7 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         borrar.type = 'button';
         borrar.className = 'boton-texto peligro';
         borrar.textContent = 'Borrar';
-        borrar.addEventListener('click', () => borrarServicio(servicio));
+        borrar.addEventListener('click', () => borrarServicio(servicio, borrar));
         acciones.append(editar, borrar);
 
         fila.append(info, precio, acciones);
@@ -565,8 +565,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  async function borrarServicio(servicio) {
-    if (!confirm(`¿Borrar el servicio «${servicio.titulo}»?`)) return;
+  async function borrarServicio(servicio, boton) {
+    if (!(await Interfaz.confirmar(boton, { pregunta: '¿Borrar?', si: 'Borrar', no: 'No' }))) return;
     try {
       await peticion('DELETE', `/api/perfil/servicios/${servicio.id}`);
       servicios = servicios.filter(s => s.id !== servicio.id);
@@ -789,8 +789,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (error) {
         // RN-03: al quitar sectores con servicios, el servidor pide confirmación antes de borrarlos
         if (error.status !== 409 || !error.datos.servicios) throw error;
-        const lista = error.datos.servicios.map(s => `  · ${s.titulo} (${s.sector})`).join('\n');
-        if (!confirm(`Al quitar ese sector se borrarán estos servicios:\n\n${lista}\n\n¿Quieres continuar?`)) {
+        const borrar = await Interfaz.confirmarBloque(document.querySelector('.pie-formulario'), {
+          titulo: 'Al quitar ese sector se borrarán estos servicios:',
+          detalle: error.datos.servicios.map(s => `${s.titulo} (${s.sector})`),
+          si: 'Borrar servicios y guardar'
+        });
+        if (!borrar) {
           mostrarMensaje('No se ha guardado el perfil. Vuelve a marcar el sector si quieres conservar sus servicios.');
           return;
         }

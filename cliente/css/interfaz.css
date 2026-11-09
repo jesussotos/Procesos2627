@@ -1,0 +1,346 @@
+/* ==========================================================================
+   Controles de formulario propios (D-31): desplegables y listas de sugerencias
+   en verde pino con efecto cristal, casillas personalizadas y confirmaciones
+   en el sitio.
+   ========================================================================== */
+:root {
+  --cristal-pino: rgba(23, 48, 42, 0.86);
+  --brillo-pino: 0 0 0 3px rgba(36, 73, 61, 0.22), 0 0 22px -2px rgba(36, 73, 61, 0.45);
+}
+
+/* --- Desplegable --- */
+.desplegable {
+  position: relative;
+}
+
+.select-oculto {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.desplegable-boton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--tinta);
+  text-align: left;
+  background: var(--superficie);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--radio);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.25s ease;
+}
+
+.desplegable-boton span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Flecha que gira al abrir */
+.desplegable-boton::after {
+  content: "";
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-right: 1.5px solid var(--grafito);
+  border-bottom: 1.5px solid var(--grafito);
+  transform: rotate(45deg);
+  transition: transform 0.25s ease, border-color 0.2s ease;
+}
+
+.desplegable-boton:hover {
+  border-color: var(--pino);
+}
+
+.desplegable-boton:focus-visible,
+.desplegable.abierto .desplegable-boton {
+  outline: none;
+  border-color: var(--pino);
+  box-shadow: var(--brillo-pino);
+}
+
+.desplegable.abierto .desplegable-boton::after {
+  margin-top: 4px;
+  border-color: var(--pino);
+  transform: rotate(-135deg);
+}
+
+.desplegable-boton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Campos de texto activos con el mismo brillo */
+input:focus,
+textarea:focus {
+  box-shadow: var(--brillo-pino);
+}
+
+/* --- Menú verde con efecto cristal (desplegables y sugerencias de ciudades) --- */
+.menu-verde,
+.sugerencias {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 288px;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  color: #FFFFFF;
+  background: var(--cristal-pino);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(185, 204, 191, 0.28);
+  border-radius: 10px;
+  box-shadow: 0 18px 40px -12px rgba(23, 48, 42, 0.55), 0 0 26px -6px rgba(36, 73, 61, 0.55);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(185, 204, 191, 0.5) transparent;
+}
+
+/* Animación al abrir: aparece y baja un poco */
+.desplegable-lista {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top center;
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.desplegable.abierto .desplegable-lista {
+  opacity: 1;
+  transform: none;
+}
+
+.desplegable.hacia-arriba .desplegable-lista {
+  top: auto;
+  bottom: calc(100% + 6px);
+  transform-origin: bottom center;
+  transform: translateY(6px) scale(0.98);
+}
+
+.desplegable.hacia-arriba.abierto .desplegable-lista {
+  transform: none;
+}
+
+.sugerencias:not([hidden]) {
+  animation: aparecer-menu 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes aparecer-menu {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.menu-verde li,
+.sugerencias li {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 34px 9px 12px;
+  font-size: 0.9375rem;
+  color: rgba(255, 255, 255, 0.92);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.menu-verde li + li,
+.sugerencias li + li {
+  border-top: none;
+  margin-top: 2px;
+}
+
+.menu-verde li.activa,
+.sugerencias li[role=option]:hover,
+.sugerencias li[aria-selected=true] {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ✓ en la opción elegida */
+.menu-verde li[aria-selected=true] {
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.menu-verde li[aria-selected=true]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 5px;
+  height: 10px;
+  margin-top: -7px;
+  border-right: 2px solid var(--salvia);
+  border-bottom: 2px solid var(--salvia);
+  transform: rotate(45deg);
+}
+
+.sugerencias small {
+  margin-left: 0;
+  font-size: 0.8125rem;
+  color: var(--salvia);
+}
+
+.sugerencias .sin-resultados {
+  color: var(--salvia);
+  cursor: default;
+}
+
+.sugerencias .sin-resultados:hover {
+  background: none;
+}
+
+/* --- Casillas personalizadas --- */
+input[type=checkbox] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  background: var(--superficie);
+  border: 1.5px solid var(--linea-fuerte);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.2s ease;
+}
+
+input[type=checkbox]::before {
+  content: "";
+  width: 5px;
+  height: 9px;
+  margin-top: -2px;
+  border-right: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.15s ease;
+}
+
+input[type=checkbox]:hover {
+  border-color: var(--pino);
+}
+
+input[type=checkbox]:checked {
+  background: var(--pino);
+  border-color: var(--pino);
+}
+
+input[type=checkbox]:checked::before {
+  transform: rotate(45deg) scale(1);
+}
+
+input[type=checkbox]:focus-visible {
+  outline: none;
+  box-shadow: var(--brillo-pino);
+}
+
+/* --- Confirmación en el sitio --- */
+.confirmacion-sitio {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--rojo);
+  animation: aparecer-menu 0.18s ease;
+}
+
+* + .confirmacion-sitio {
+  margin-left: 16px;
+}
+
+.btn-confirmar {
+  min-height: 30px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  background: var(--rojo);
+  border: none;
+  border-radius: var(--radio);
+  cursor: pointer;
+}
+
+.btn-confirmar:hover {
+  background: #861E18;
+}
+
+.btn-confirmar:focus-visible {
+  outline: 2px solid var(--rojo);
+  outline-offset: 2px;
+}
+
+/* Confirmación sobre una foto: ocupa la miniatura */
+.foto .confirmacion-sitio {
+  position: absolute;
+  inset: 0;
+  margin-left: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  color: #FFFFFF;
+  background: var(--cristal-pino);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.foto .confirmacion-sitio .boton-texto {
+  color: #FFFFFF;
+}
+
+/* Confirmación en bloque (avisos largos) */
+.confirmacion-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  font-size: 0.9375rem;
+  color: #6E1A15;
+  background: var(--rojo-claro);
+  border: 1px solid #E5BDB9;
+  border-left: 3px solid var(--rojo);
+  border-radius: 0 var(--radio-grande) var(--radio-grande) 0;
+  animation: aparecer-menu 0.2s ease;
+}
+
+.confirmacion-bloque ul {
+  margin-left: 18px;
+  font-size: 0.875rem;
+}
+
+.confirmacion-acciones {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desplegable-lista,
+  .sugerencias:not([hidden]),
+  .confirmacion-sitio,
+  .confirmacion-bloque {
+    animation: none;
+    transition: none;
+  }
+}
