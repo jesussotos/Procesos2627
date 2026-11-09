@@ -13,13 +13,16 @@ timestamp: 2026-11-06
 - **Perfil:** tablas `perfiles` (uno por usuario), `perfil_sectores` (con la especialidad) y `perfil_ciudades`. `PUT /api/perfil` valida todo antes de escribir y sustituye las listas completas.
 - **Servicios:** tabla `servicios` asociada al perfil y a uno de sus sectores, con el tipo de precio, el importe y el precio de la visita en céntimos (D-25), la unidad y el IVA. `GET /api/perfil` devuelve los servicios con los importes ya en euros.
 - **Imágenes:** tabla `imagenes` (logo o foto de trabajo, tipo MIME y contenido en un `BLOB`) asociada al usuario. El formato se comprueba por los primeros bytes del archivo, no por la cabecera que envía el cliente.
+- **Buscador:** una consulta SQL une perfiles, usuarios, ciudades, servicios y sectores activos, aplica RN-01 y los filtros, agrupa por perfil con `MIN(importe)` como precio de referencia, ordena y pagina con `LIMIT`/`OFFSET`. Los detalles de los 20 resultados se leen con cuatro consultas `IN (...)`, no una por resultado.
 - **Utilidades:** [servidor/normalizar.js](../servidor/normalizar.js) quita mayúsculas, tildes y espacios repetidos; lo usan los sectores (RN-05) y la búsqueda de ciudades.
 - **Correo:** [servidor/correo.js](../servidor/correo.js). Adaptador de la API HTTP de Brevo (`POST https://api.brevo.com/v3/smtp/email`). Se usa HTTP en lugar de SMTP porque algunos proveedores cloud con capa gratuita bloquean los puertos SMTP salientes. En las pruebas se sustituye por un adaptador falso.
 
 ## Frontend
 
-- **Presentación:** páginas [cliente/index.html](../cliente/index.html) (acceso), [cliente/dashboard.html](../cliente/dashboard.html) («Mi perfil» del profesional) y [cliente/admin.html](../cliente/admin.html) (administración). Los estilos están en [cliente/css/](../cliente/css/): `base.css` (variables, barra, formularios, botones), `ficha.css` (la ficha del profesional, reutilizable) y una hoja por página (`acceso.css`, `perfil.css`, `admin.css`).
-- **Comunicación:** [cliente/rest.js](../cliente/rest.js) (acceso), [cliente/perfil.js](../cliente/perfil.js) y [cliente/admin.js](../cliente/admin.js). [cliente/precio.js](../cliente/precio.js) formatea los precios de los servicios y lo compartirán la ficha pública y el buscador. Usan `fetch` contra `/api/...`, conservan la sesión en `localStorage` y pintan siempre el texto con `textContent`, nunca como HTML. `rest.js` muestra el resultado de la confirmación leyendo `?confirmacion=ok|error` de la URL.
+- **Páginas públicas:** [cliente/index.html](../cliente/index.html) (buscador, `/`) y [cliente/ficha.html](../cliente/ficha.html) (ficha de un profesional).
+- **Páginas con sesión:** [cliente/acceso.html](../cliente/acceso.html) (inicio de sesión y registro de profesionales y del administrador), [cliente/dashboard.html](../cliente/dashboard.html) («Mi perfil») y [cliente/admin.html](../cliente/admin.html).
+- **Estilos** en [cliente/css/](../cliente/css/): `base.css` común, `ficha.css` (la ficha del profesional, reutilizada en la vista previa, los resultados y la ficha de ejemplo) y una hoja por página.
+- **Comunicación:** un archivo por página (`rest.js` para el acceso, `buscador.js`, `ficha.js`, `perfil.js`, `admin.js`) y dos compartidos: `precio.js` (formato de precios) y `publico.js` (botón de acceso de la barra, enlaces de contacto, logo o iniciales). Todos usan `fetch` contra `/api/...` y pintan el texto con `textContent`, nunca como HTML.
 
 ## Frontera exacta
 
@@ -42,6 +45,8 @@ El navegador cruza la frontera mediante peticiones HTTP a `/api/...`. [servidor/
 | POST | `/api/sectores` | Administrador con sesión válida |
 | PATCH | `/api/sectores/:id` | Administrador con sesión válida (cuerpo: `nombre` y/o `activo`) |
 | GET | `/api/ciudades?q=texto` | Cualquier cliente (máximo 10 resultados; mínimo 2 letras) |
+| GET | `/api/profesionales?ciudad=&sector=&tipo=&max=&orden=&pagina=` | Cualquier cliente; solo perfiles publicados (RN-01) |
+| GET | `/api/profesionales/:id` | Cualquier cliente; 404 si el perfil no está publicado |
 | GET | `/api/perfil` | Profesional con sesión válida (su propio perfil) |
 | PUT | `/api/perfil` | Profesional con sesión válida; sustituye el perfil completo (datos, sectores y ciudades) |
 | POST | `/api/perfil/servicios` | Profesional con sesión válida y perfil guardado |

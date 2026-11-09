@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function cerrarSesion() {
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('rol');
-    window.location.href = '/index.html';
+    window.location.href = '/acceso.html';
   }
 
   function mostrarMensaje(texto, esExito = false, desplazar = true) {
@@ -68,14 +68,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       await peticion('DELETE', '/api/usuarios/me');
       localStorage.removeItem('jwt_token');
       localStorage.removeItem('rol');
-      window.location.href = '/index.html?cuenta=eliminada';
+      window.location.href = '/acceso.html?cuenta=eliminada';
     } catch (error) {
       mostrarMensaje(error.message);
     }
   });
 
   if (!token) {
-    window.location.href = '/index.html';
+    window.location.href = '/acceso.html';
     return;
   }
 
@@ -557,6 +557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       cerrarFormularioServicio();
       pintarServicios();
+      actualizarPublicacion();
     } catch (error) {
       mostrarMensaje(error.message);
     } finally {
@@ -571,6 +572,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       servicios = servicios.filter(s => s.id !== servicio.id);
       if (editandoServicio === servicio.id) cerrarFormularioServicio();
       pintarServicios();
+      actualizarPublicacion();
     } catch (error) {
       mostrarMensaje(error.message);
     }
@@ -717,6 +719,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   form.addEventListener('input', pintarVistaPrevia);
   form.addEventListener('change', pintarVistaPrevia);
 
+  // --- Estado de publicación (RF-16), calculado por el servidor con la regla RN-01 ---
+
+  function pintarPublicacion(perfil) {
+    const estado = document.getElementById('estado-publicacion');
+    estado.replaceChildren();
+    const publicacion = perfil.publicacion || { publicado: false, faltan: [] };
+    if (publicacion.publicado) {
+      const texto = document.createElement('strong');
+      texto.textContent = 'Tu ficha está publicada en el buscador.';
+      const enlace = document.createElement('a');
+      enlace.href = `/ficha.html?id=${perfil.id}`;
+      enlace.target = '_blank';
+      enlace.textContent = 'Ver mi ficha';
+      estado.append(texto, enlace);
+    } else {
+      const falta = publicacion.faltan;
+      const lista = falta.length > 1 ? `${falta.slice(0, -1).join(', ')} y ${falta.at(-1)}` : falta[0];
+      estado.textContent = `Tu ficha aún no aparece en el buscador. ${perfil.existe ? 'Te falta' : 'Necesitas'}: ${lista}.`;
+    }
+  }
+
+  // Los servicios cambian si la ficha se publica: se vuelve a preguntar al servidor
+  async function actualizarPublicacion() {
+    try {
+      pintarPublicacion(await peticion('GET', '/api/perfil'));
+    } catch (error) {
+      // no es grave: se actualizará al recargar
+    }
+  }
+
   // --- Cargar y guardar ---
 
   function pintarPerfil(perfil) {
@@ -730,6 +762,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sectoresGuardados = Array.isArray(perfil.sectores) ? [...perfil.sectores] : [];
     perfilGuardado = Boolean(perfil.existe);
     pintarServicios();
+    pintarPublicacion(perfil);
     pintarCiudades();
     pintarLogo();
     pintarGaleria();

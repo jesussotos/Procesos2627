@@ -66,6 +66,25 @@
   box-shadow: inset 0 0 0 2.5px var(--pino-profundo);
 }
 
+/* Estado de publicación según el servidor (RF-16) */
+.progreso-estado {
+  margin-top: 12px;
+  padding-top: 10px;
+  font-size: 0.8125rem;
+  color: var(--salvia);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.progreso-estado strong {
+  color: #FFFFFF;
+}
+
+.progreso-estado a {
+  margin-left: 6px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
 /* Formulario a la izquierda, vista previa fija a la derecha */
 .perfil-cuerpo {
   display: grid;

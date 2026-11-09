@@ -12,6 +12,9 @@ Este repositorio contiene el desarrollo del proyecto **SaaS** correspondiente a 
 
 **URL pública:** <https://procesos2627-1055302173608.europe-southwest1.run.app>
 
+- **Buscador** (público): `/`
+- **Acceso de profesionales y administrador:** `/acceso.html`
+
 - **Proveedor:** Google Cloud Run (región `europe-southwest1`, Madrid).
 - **Base de datos en producción:** Turso (SQLite gestionado con libSQL). Los datos se conservan entre reinicios y despliegues.
 - **Despliegue continuo:** Cloud Run compila y despliega automáticamente desde este repositorio cada vez que cambia `main`.

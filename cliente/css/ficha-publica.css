@@ -1,0 +1,217 @@
+/* ==========================================================================
+   Ficha pública de un profesional (ficha.html)
+   ========================================================================== */
+.ficha-banda .contenedor {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  padding-top: 24px;
+  padding-bottom: 40px;
+}
+
+.volver {
+  align-self: flex-start;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--salvia);
+  text-decoration: none;
+}
+
+.volver:hover {
+  color: #FFFFFF;
+  text-decoration: underline;
+}
+
+.ficha-identidad {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.ficha-identidad .titulo {
+  overflow-wrap: anywhere;
+}
+
+.ficha-logo-grande {
+  width: 84px;
+  height: 84px;
+  font-size: 1.75rem;
+  border-radius: 14px;
+}
+
+.ficha-banda .ficha-logo:not(.con-imagen) {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ficha-cuerpo-publica {
+  padding-top: 32px;
+  padding-bottom: 96px;
+}
+
+.ficha-columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 24px;
+}
+
+.ficha-principal,
+.ficha-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.ficha-lateral {
+  position: sticky;
+  top: 24px;
+}
+
+.ficha-texto {
+  max-width: 68ch;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* Fotos de trabajos */
+.galeria {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.galeria a {
+  display: block;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--pino-claro);
+}
+
+.galeria img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.galeria a:hover img {
+  transform: scale(1.03);
+}
+
+/* Servicios agrupados por sector */
+.grupo-sector + .grupo-sector {
+  margin-top: 24px;
+}
+
+.grupo-sector h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.grupo-sector > p {
+  margin-top: 2px;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+  color: var(--grafito);
+}
+
+.servicio-publico {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--linea);
+}
+
+.servicio-publico strong {
+  font-weight: 600;
+}
+
+.servicio-publico .descripcion {
+  margin-top: 2px;
+  font-size: 0.875rem;
+  color: var(--grafito);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.servicio-publico .precio {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.servicio-publico .precio strong {
+  display: block;
+  color: var(--pino);
+  white-space: nowrap;
+}
+
+.servicio-publico .precio small {
+  font-size: 0.75rem;
+  color: var(--grafito);
+}
+
+/* Contacto */
+.botones-contacto {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.botones-contacto .btn {
+  justify-content: space-between;
+  width: 100%;
+  white-space: normal;
+}
+
+.botones-contacto .btn span {
+  font-weight: 400;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.btn-primary span {
+  color: var(--salvia);
+}
+
+.lista-ciudades {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lista-ciudades li {
+  padding: 4px 12px;
+  font-size: 0.875rem;
+  color: var(--pino-oscuro);
+  background: var(--pino-claro);
+  border-radius: 999px;
+}
+
+@media (max-width: 900px) {
+  .ficha-columnas {
+    grid-template-columns: 1fr;
+  }
+  .ficha-lateral {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .ficha-identidad {
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .ficha-logo-grande {
+    width: 60px;
+    height: 60px;
+    font-size: 1.25rem;
+  }
+}

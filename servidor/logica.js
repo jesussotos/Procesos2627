@@ -262,6 +262,39 @@ async function servicioPropio(usuario, id) {
   return { perfil: await datos.buscarPerfilPorUsuario(usuario.id), servicio };
 }
 
+// --- Buscador (RF-18 a RF-20) ---
+
+const RESULTADOS_POR_PAGINA = 20;
+const ORDENES_BUSQUEDA = ['precio-asc', 'precio-desc', 'recientes'];
+const SERVICIOS_POR_RESULTADO = 3;
+
+// Los parámetros llegan como texto desde la URL; vacío equivale a no indicarlo
+function idOpcional(valor, mensaje) {
+  if (estaVacio(valor)) return null;
+  const id = Number(valor);
+  if (!idValido(id)) throw errorDe(mensaje, 400);
+  return id;
+}
+
+// Agrupa una lista de filas por perfil_id: { [perfilId]: [filas] }
+function agruparPorPerfil(filas) {
+  const grupos = {};
+  filas.forEach((fila) => {
+    (grupos[fila.perfil_id] = grupos[fila.perfil_id] || []).push(fila);
+  });
+  return grupos;
+}
+
+// Datos de contacto que el profesional ha decidido publicar (RNF-11: nunca su email de acceso)
+function contactoPublico(perfil) {
+  const contacto = {};
+  if (perfil.telefono) contacto.telefono = perfil.telefono;
+  if (perfil.whatsapp) contacto.whatsapp = perfil.whatsapp;
+  if (perfil.email_contacto) contacto.email = perfil.email_contacto;
+  if (perfil.web) contacto.web = perfil.web;
+  return contacto;
+}
+
 // --- Imágenes (RF-23) ---
 
 const LIMITES_IMAGEN = {
@@ -539,12 +572,28 @@ const logica = {
     if (!perfil) {
       return {
         existe: false, nombreComercial: '', descripcion: '', telefono: '', emailContacto: '',
-        web: '', whatsapp: '', actualizado: null, sectores: [], ciudades: [], servicios: [], ...conImagenes
+        web: '', whatsapp: '', actualizado: null, sectores: [], ciudades: [], servicios: [], ...conImagenes,
+        id: null,
+        publicacion: { publicado: false, faltan: ['nombre comercial', 'un dato de contacto', 'un sector', 'una ciudad', 'un servicio'] }
       };
     }
+    const sectores = await datos.sectoresDePerfil(perfil.id);
+    const ciudades = await datos.ciudadesDePerfil(perfil.id);
+    const servicios = (await datos.serviciosDePerfil(perfil.id)).map(aServicioPublico);
+
+    // RF-16: qué le falta para cumplir RN-01 (la misma regla que aplica el buscador en SQL)
+    const faltan = [];
+    if (!perfil.nombre_comercial) faltan.push('nombre comercial');
+    if (!perfil.telefono && !perfil.email_contacto && !perfil.web && !perfil.whatsapp) faltan.push('un dato de contacto');
+    if (!sectores.some((s) => s.activo)) faltan.push('un sector');
+    if (ciudades.length === 0) faltan.push('una ciudad');
+    if (!servicios.some((sv) => sv.sectorActivo)) faltan.push('un servicio');
+
     return {
       ...conImagenes,
-      servicios: (await datos.serviciosDePerfil(perfil.id)).map(aServicioPublico),
+      id: perfil.id,
+      publicacion: { publicado: faltan.length === 0, faltan },
+      servicios,
       existe: true,
       nombreComercial: perfil.nombre_comercial,
       descripcion: perfil.descripcion || '',
@@ -553,8 +602,8 @@ const logica = {
       web: perfil.web || '',
       whatsapp: perfil.whatsapp || '',
       actualizado: perfil.actualizado,
-      sectores: await datos.sectoresDePerfil(perfil.id),
-      ciudades: await datos.ciudadesDePerfil(perfil.id)
+      sectores,
+      ciudades
     };
   },
 
@@ -669,6 +718,107 @@ const logica = {
   borrarServicio: async (usuario, id) => {
     await servicioPropio(usuario, id);
     await datos.borrarServicio(id);
+  },
+
+  // --- Buscador público (RF-18, RF-19, RF-20) ---
+
+  // Parámetros (texto, como llegan en la URL): ciudad (obligatoria), sector, tipo, max, orden, pagina
+  buscarProfesionales: async (parametros = {}) => {
+    const ciudadId = idOpcional(parametros.ciudad, 'La ciudad no es válida');
+    if (!ciudadId) {
+      throw errorDe('Elige una ciudad para buscar', 400);
+    }
+    const ciudad = await datos.buscarCiudadPorId(ciudadId);
+    if (!ciudad) {
+      throw errorDe('La ciudad no está en el catálogo', 400);
+    }
+
+    // RN-04: un sector desactivado no se puede usar para buscar
+    const sectorId = idOpcional(parametros.sector, 'El sector no es válido');
+    let sector = null;
+    if (sectorId) {
+      sector = await datos.buscarSectorPorId(sectorId);
+      if (!sector || !sector.activo) throw errorDe('Ese sector no está disponible', 400);
+    }
+
+    // RF-19: tipo de precio e importe máximo
+    const tipoPrecio = estaVacio(parametros.tipo) ? null : parametros.tipo;
+    if (tipoPrecio && !TIPOS_PRECIO.includes(tipoPrecio)) {
+      throw errorDe('Tipo de precio no válido', 400);
+    }
+    const maxCentimos = estaVacio(parametros.max) ? null : leerImporte(parametros.max, 'El importe máximo');
+
+    // RF-20: orden y página
+    const orden = estaVacio(parametros.orden) ? 'precio-asc' : parametros.orden;
+    if (!ORDENES_BUSQUEDA.includes(orden)) {
+      throw errorDe('Orden no válido', 400);
+    }
+    const pagina = estaVacio(parametros.pagina) ? 1 : Number(parametros.pagina);
+    if (!Number.isInteger(pagina) || pagina < 1 || pagina > 1000) {
+      throw errorDe('Página no válida', 400);
+    }
+
+    const filtros = { sectorId, tipoPrecio, maxCentimos };
+    const { total, filas } = await datos.buscarProfesionales({
+      ciudadId, ...filtros, orden,
+      limite: RESULTADOS_POR_PAGINA,
+      desplazamiento: (pagina - 1) * RESULTADOS_POR_PAGINA
+    });
+
+    // Detalles de los perfiles de esta página, con pocas consultas
+    const ids = filas.map((f) => f.id);
+    const perfiles = Object.fromEntries((await datos.perfilesPorIds(ids)).map((p) => [p.id, p]));
+    const sectores = agruparPorPerfil(await datos.sectoresActivosDePerfiles(ids));
+    const ciudades = agruparPorPerfil(await datos.ciudadesDePerfiles(ids));
+    const servicios = agruparPorPerfil(await datos.serviciosPublicosDePerfiles(ids, filtros));
+
+    const resultados = filas.map((fila) => {
+      const perfil = perfiles[fila.id];
+      const coincidentes = (servicios[fila.id] || []).map(aServicioPublico);
+      return {
+        id: fila.id,
+        nombreComercial: perfil.nombre_comercial,
+        logo: perfil.logo_id ? { url: urlImagen(perfil.logo_id) } : null,
+        sectores: (sectores[fila.id] || []).map((s) => s.nombre),
+        ciudades: (ciudades[fila.id] || []).map(({ id, nombre, provincia }) => ({ id, nombre, provincia })),
+        precioReferencia: fila.referencia === null ? null : fila.referencia / 100,
+        serviciosCoincidentes: coincidentes.length,
+        servicios: coincidentes.slice(0, SERVICIOS_POR_RESULTADO)
+      };
+    });
+
+    return {
+      ciudad,
+      sector: sector ? { id: sector.id, nombre: sector.nombre } : null,
+      filtros: { tipo: tipoPrecio, max: maxCentimos === null ? null : maxCentimos / 100, orden },
+      total,
+      pagina,
+      paginas: Math.ceil(total / RESULTADOS_POR_PAGINA),
+      porPagina: RESULTADOS_POR_PAGINA,
+      resultados
+    };
+  },
+
+  // RF-21: ficha pública de un profesional, solo si su perfil está publicado (RN-01)
+  obtenerFichaPublica: async (perfilId) => {
+    if (!idValido(perfilId) || !(await datos.perfilPublicado(perfilId))) {
+      throw errorDe('Este profesional no está disponible', 404);
+    }
+    const [perfil] = await datos.perfilesPorIds([perfilId]);
+    const imagenes = await datos.imagenesDeUsuario(perfil.usuario_id);
+    const logo = imagenes.find((i) => i.tipo === 'logo');
+    return {
+      id: perfil.id,
+      nombreComercial: perfil.nombre_comercial,
+      descripcion: perfil.descripcion || '',
+      contacto: contactoPublico(perfil),
+      logo: logo ? { url: urlImagen(logo.id) } : null,
+      fotos: imagenes.filter((i) => i.tipo === 'trabajo').map((i) => ({ url: urlImagen(i.id) })),
+      sectores: (await datos.sectoresActivosDePerfiles([perfil.id])).map(({ id, nombre, especialidad }) => ({ id, nombre, especialidad })),
+      ciudades: (await datos.ciudadesDePerfiles([perfil.id])).map(({ id, nombre, provincia }) => ({ id, nombre, provincia })),
+      servicios: (await datos.serviciosPublicosDePerfiles([perfil.id])).map(aServicioPublico),
+      actualizado: perfil.actualizado
+    };
   },
 
   // --- Logo y fotos de trabajos (RF-23, opcionales) ---
