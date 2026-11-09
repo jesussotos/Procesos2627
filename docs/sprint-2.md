@@ -18,7 +18,7 @@ Convertir la gestión de usuarios del Sprint 1 en un directorio de profesionales
 | RF-09 | hecho | Borrado lógico desde el panel de administración y desde «Eliminar mi cuenta». |
 | RNF-02 | hecho | Sin secreto JWT de respaldo; el servidor no arranca sin `JWT_SECRET`. |
 | RNF-05 | hecho | Desplegado en Google Cloud Run; URL en el README. |
-| RNF-06 | hecho | 44 pruebas con `npm test`; se ampliarán con las reglas de negocio del Sprint 2. |
+| RNF-06 | hecho | 55 pruebas con `npm test`; se ampliarán con las reglas de negocio del Sprint 2. |
 | PRO-01 | Por verificar | Comprobar los PR en GitHub. |
 | PRO-02 | Por verificar | Comprobar las ejecuciones del CI en GitHub. |
 | PRO-03 | hecho | Cloud Run despliega automáticamente cada cambio en `main`. |
@@ -28,6 +28,7 @@ Convertir la gestión de usuarios del Sprint 1 en un directorio de profesionales
 - **RNF-09:** persistencia en producción con Turso (D-15).
 - **Estado de usuario y roles:** `estado` (`pendiente`, `activo`, `eliminado`) sustituye a `confirmado` y el rol `usuario` pasa a `profesional`.
 - **RN-08, RN-09 y RN-11:** borrado lógico, permisos de eliminación y reactivación de cuentas eliminadas (D-17).
+- **Servicios con precio (paso 5):** RF-14, RF-15, RN-03 y RN-06, con un sexto tipo de precio, el presupuesto cerrado (D-26).
 - **Logo y fotos de trabajos (RF-23, nuevo):** ampliación del alcance, guardadas en Turso (D-24).
 - **Perfil del profesional (paso 4):** RF-11, RF-12, RF-13, RN-02, RN-04, RN-07 y RN-10; página «Mi perfil».
 - **Catálogos (paso 3):** RF-17, RF-22, RN-05 y la parte de RN-04 que afecta al catálogo; 12 sectores iniciales y 145 ciudades (D-19).
@@ -40,6 +41,6 @@ Convertir la gestión de usuarios del Sprint 1 en un directorio de profesionales
 | 2 | Estado de usuario y roles | hecho |
 | 3 | Catálogos de sectores y ciudades | hecho |
 | 4 | Perfil del profesional (RF-11 a RF-13) | hecho |
-| 5 | Servicios con precio (RF-14, RF-15) | pendiente |
+| 5 | Servicios con precio (RF-14, RF-15) | hecho |
 | 6 | Búsqueda y ficha pública (RF-18 a RF-21) | pendiente |
 | 7 | Inicio de sesión con Google (RF-04) | pendiente |

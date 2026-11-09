@@ -177,6 +177,7 @@ input[type=text],
 input[type=email],
 input[type=password],
 input[type=tel],
+select,
 textarea {
   width: 100%;
   min-height: 40px;
@@ -201,7 +202,17 @@ textarea::placeholder {
   color: var(--tenue);
 }
 
+select {
+  appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235C6166' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
 input:focus,
+select:focus,
 textarea:focus {
   border-color: var(--pino);
   box-shadow: var(--foco);

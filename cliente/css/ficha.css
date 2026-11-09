@@ -177,6 +177,47 @@
   color: var(--tinta);
 }
 
+.ficha-servicios {
+  list-style: none;
+  border-top: 1px solid var(--linea);
+}
+
+.ficha-servicios li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--linea);
+}
+
+.ficha-servicios li > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ficha-servicios strong {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ficha-servicios small {
+  margin-left: 4px;
+  font-size: 0.75rem;
+  color: var(--grafito);
+}
+
+.ficha-servicios .gratis {
+  color: var(--pino);
+}
+
+.ficha-mas {
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  color: var(--grafito);
+}
+
 .ficha-vacia {
   font-size: 0.8125rem;
   color: var(--tenue);

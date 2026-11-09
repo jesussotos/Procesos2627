@@ -113,4 +113,23 @@ Las decisiones D-07 a D-13 del dominio del Sprint 2 están en la especificación
 - **Consecuencias:** Cada imagen pasa por el servidor y la base de datos; con mucho tráfico convendría un almacenamiento de objetos con CDN. El formato se valida por los primeros bytes del archivo y las imágenes de cuentas eliminadas dejan de servirse (RN-08).
 - **Estado:** vigente. Sustituye a la exclusión de «Subida de imágenes o logotipos» del apartado 8 de la especificación del Sprint 2.
 
+## D-25: Importes guardados en céntimos
+
+- **Qué se decidió:** Guardar el importe de cada servicio y el precio de la visita como números enteros de céntimos. La API recibe y devuelve euros («45,50», «45.5» o 45.5) y la lógica los convierte, aceptando como mucho dos decimales.
+- **Por qué:** Los números decimales en coma flotante no representan exactamente cantidades como 0,10 €; con enteros, comparar y ordenar por precio (RF-19, RF-20) es exacto.
+- **Estado:** vigente.
+
+## D-26: Sexto tipo de precio, «presupuesto cerrado»
+
+- **Qué se decidió:** Añadir a los cinco tipos de precio de la especificación (apartado 3.2) el **presupuesto cerrado**: el profesional se compromete a dar un precio final tras ver el trabajo. Indica si el presupuesto es gratuito y, si no lo es, puede indicar el precio de la visita. No lleva importe del servicio.
+- **Por qué:** Muchos oficios trabajan así y para el cliente es una garantía distinta de «a consultar», que no compromete a nada. Se mantienen los dos.
+- **Consecuencias:** Como «a consultar», no tiene importe comparable: al ordenar por precio aparecerá al final (apartado 4.4). Hay que añadir la fila a la tabla 3.2 de la especificación.
+- **Estado:** vigente.
+
+## D-27: Confirmación en el servidor al quitar sectores con servicios
+
+- **Qué se decidió:** Si al guardar el perfil se quitan sectores que tienen servicios, `PUT /api/perfil` responde 409 con la lista de servicios afectados y no cambia nada; solo los borra si la petición repite el envío con `confirmarBorrado: true`. La página muestra esa lista y pide confirmación.
+- **Por qué:** RN-03 exige confirmación previa. Hacerlo en el servidor garantiza que ningún cliente borre servicios sin haberlo confirmado, y la lista viene del servidor, que es quien sabe qué servicios se perderían.
+- **Estado:** vigente.
+
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**

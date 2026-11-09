@@ -266,7 +266,9 @@ describe('Pruebas unitarias de la capa de lógica', () => {
 
   // Perfil mínimo válido para un profesional, al que cada prueba cambia lo que necesite
   async function perfilBase() {
-    const fontaneria = await logica.crearSector('Fontanería');
+    // Se reutiliza el sector si otra parte de la prueba ya lo creó (RN-05 impide duplicarlo)
+    const fontaneria = (await logica.listarSectores()).find(s => s.nombre === 'Fontanería')
+      || await logica.crearSector('Fontanería');
     return {
       nombreComercial: 'Fontanería Pérez',
       descripcion: 'Reparaciones urgentes.\nPresupuesto sin compromiso.',
@@ -443,5 +445,126 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     const perfil = await logica.obtenerPerfil(usuario);
     expect(perfil.logo).toBeNull();
     expect(perfil.fotos).toEqual([]);
+  });
+
+  // --- Sprint 2: servicios con precio (RF-14, RF-15) ---
+
+  // Profesional con perfil guardado en Fontanería; devuelve su usuario y el id del sector
+  async function profesionalConPerfil(email = 'pro@example.com') {
+    const { usuario } = await crearSesion(email);
+    const entrada = await perfilBase();
+    await logica.guardarPerfil(usuario, entrada);
+    return { usuario, entrada, sectorId: entrada.sectores[0].sectorId };
+  }
+
+  test('45. RF-14: Crear un servicio de precio fijo con céntimos', async () => {
+    const { usuario, sectorId } = await profesionalConPerfil();
+    const servicio = await logica.crearServicio(usuario, {
+      sectorId, titulo: 'Cambio de grifo', tipoPrecio: 'fijo', importe: '45,50', ivaIncluido: true
+    });
+    expect(servicio).toEqual(expect.objectContaining({
+      titulo: 'Cambio de grifo', sector: 'Fontanería', tipoPrecio: 'fijo', importe: 45.5, ivaIncluido: true
+    }));
+    expect((await logica.obtenerPerfil(usuario)).servicios).toHaveLength(1);
+  });
+
+  test('46. RF-14: Por hora, por unidad, desde y a consultar', async () => {
+    const { usuario, sectorId } = await profesionalConPerfil();
+    const hora = await logica.crearServicio(usuario, { sectorId, titulo: 'Urgencias', tipoPrecio: 'hora', importe: 25 });
+    const unidad = await logica.crearServicio(usuario, { sectorId, titulo: 'Alicatado', tipoPrecio: 'unidad', importe: '22', unidad: 'm²', ivaIncluido: false });
+    const desde = await logica.crearServicio(usuario, { sectorId, titulo: 'Reforma de baño', tipoPrecio: 'desde', importe: 3000 });
+    const consultar = await logica.crearServicio(usuario, { sectorId, titulo: 'Proyecto a medida', tipoPrecio: 'consultar' });
+    expect(hora.unidad).toBe('hora');
+    expect(unidad).toEqual(expect.objectContaining({ importe: 22, unidad: 'm²', ivaIncluido: false }));
+    expect(desde.importe).toBe(3000);
+    expect(consultar).toEqual(expect.objectContaining({ importe: null, ivaIncluido: null }));
+  });
+
+  test('47. RN-06 Error: Servicio «a consultar» con importe, o «por unidad» sin unidad', async () => {
+    const { usuario, sectorId } = await profesionalConPerfil();
+    await expect(logica.crearServicio(usuario, { sectorId, titulo: 'X', tipoPrecio: 'consultar', importe: 10 })).rejects.toThrow('no lleva importe');
+    await expect(logica.crearServicio(usuario, { sectorId, titulo: 'X', tipoPrecio: 'unidad', importe: 10 })).rejects.toThrow('unidad es obligatorio');
+    await expect(logica.crearServicio(usuario, { sectorId, titulo: 'X', tipoPrecio: 'fijo' })).rejects.toThrow('Indica el importe');
+  });
+
+  test('48. RN-06 Error: Importes a 0, negativos, con tres decimales o no numéricos', async () => {
+    const { usuario, sectorId } = await profesionalConPerfil();
+    for (const importe of [0, '0,00', -5, '10,555', 'diez', '1e3']) {
+      await expect(logica.crearServicio(usuario, { sectorId, titulo: 'X', tipoPrecio: 'fijo', importe })).rejects.toThrow();
+    }
+    expect((await logica.obtenerPerfil(usuario)).servicios).toHaveLength(0);
+  });
+
+  test('49. D-26: Presupuesto cerrado gratuito o con precio de visita', async () => {
+    const { usuario, sectorId } = await profesionalConPerfil();
+    const gratis = await logica.crearServicio(usuario, { sectorId, titulo: 'Reformas', tipoPrecio: 'presupuesto', presupuestoGratis: true });
+    const conVisita = await logica.crearServicio(usuario, { sectorId, titulo: 'Instalación', tipoPrecio: 'presupuesto', presupuestoGratis: false, precioVisita: '20' });
+    expect(gratis).toEqual(expect.objectContaining({ presupuestoGratis: true, precioVisita: null, importe: null }));
+    expect(conVisita).toEqual(expect.objectContaining({ presupuestoGratis: false, precioVisita: 20 }));
+    await expect(logica.crearServicio(usuario, { sectorId, titulo: 'X', tipoPrecio: 'presupuesto', presupuestoGratis: true, precioVisita: 20 })).rejects.toThrow('gratuito');
+    await expect(logica.crearServicio(usuario, { sectorId, titulo: 'X', tipoPrecio: 'presupuesto', importe: 100 })).rejects.toThrow('no lleva importe');
+  });
+
+  test('50. RN-03 Error: Servicio en un sector que no está en el perfil', async () => {
+    const { usuario } = await profesionalConPerfil();
+    const pintura = await logica.crearSector('Pintura');
+    await expect(logica.crearServicio(usuario, { sectorId: pintura.id, titulo: 'Pintar salón', tipoPrecio: 'fijo', importe: 300 }))
+      .rejects.toThrow('uno de los sectores de tu perfil');
+  });
+
+  test('51. RN-02 Error: Un profesional edita o borra un servicio de otro', async () => {
+    const ana = await profesionalConPerfil('ana@example.com');
+    const luis = await profesionalConPerfil('luis@example.com');
+    const servicio = await logica.crearServicio(ana.usuario, { sectorId: ana.sectorId, titulo: 'Fugas', tipoPrecio: 'fijo', importe: 40 });
+    await expect(logica.editarServicio(luis.usuario, servicio.id, { sectorId: luis.sectorId, titulo: 'Mío', tipoPrecio: 'fijo', importe: 1 }))
+      .rejects.toThrow('servicio de otro profesional');
+    await expect(logica.borrarServicio(luis.usuario, servicio.id)).rejects.toThrow('servicio de otro profesional');
+    expect((await logica.obtenerPerfil(ana.usuario)).servicios[0].titulo).toBe('Fugas');
+  });
+
+  test('52. RF-15: Editar y borrar un servicio propio', async () => {
+    const { usuario, sectorId } = await profesionalConPerfil();
+    const servicio = await logica.crearServicio(usuario, { sectorId, titulo: 'Fugas', tipoPrecio: 'fijo', importe: 40 });
+    const editado = await logica.editarServicio(usuario, servicio.id, { sectorId, titulo: 'Fugas urgentes', tipoPrecio: 'desde', importe: 60 });
+    expect(editado).toEqual(expect.objectContaining({ titulo: 'Fugas urgentes', tipoPrecio: 'desde', importe: 60 }));
+    await logica.borrarServicio(usuario, servicio.id);
+    expect((await logica.obtenerPerfil(usuario)).servicios).toEqual([]);
+  });
+
+  test('53. RN-03: Quitar un sector con servicios exige confirmación y después los borra', async () => {
+    const { usuario, entrada, sectorId } = await profesionalConPerfil();
+    const pintura = await logica.crearSector('Pintura');
+    entrada.sectores.push({ sectorId: pintura.id, especialidad: 'Interiores' });
+    await logica.guardarPerfil(usuario, entrada);
+    await logica.crearServicio(usuario, { sectorId, titulo: 'Fugas', tipoPrecio: 'fijo', importe: 40 });
+    await logica.crearServicio(usuario, { sectorId: pintura.id, titulo: 'Pintar salón', tipoPrecio: 'fijo', importe: 300 });
+
+    entrada.sectores = entrada.sectores.filter(s => s.sectorId !== sectorId); // quita Fontanería
+    const error = await logica.guardarPerfil(usuario, entrada).catch(e => e);
+    expect(error.status).toBe(409);
+    expect(error.servicios).toEqual([expect.objectContaining({ titulo: 'Fugas', sector: 'Fontanería' })]);
+    expect((await logica.obtenerPerfil(usuario)).servicios).toHaveLength(2);
+
+    const perfil = await logica.guardarPerfil(usuario, { ...entrada, confirmarBorrado: true });
+    expect(perfil.servicios.map(s => s.titulo)).toEqual(['Pintar salón']);
+  });
+
+  test('54. RN-04: No se crean servicios en un sector desactivado, pero los que ya había se pueden editar', async () => {
+    const { usuario, sectorId } = await profesionalConPerfil();
+    const servicio = await logica.crearServicio(usuario, { sectorId, titulo: 'Fugas', tipoPrecio: 'fijo', importe: 40 });
+    await logica.cambiarEstadoSector(sectorId, false);
+    await expect(logica.crearServicio(usuario, { sectorId, titulo: 'Nuevo', tipoPrecio: 'fijo', importe: 10 })).rejects.toThrow('ya no se ofrece');
+    const editado = await logica.editarServicio(usuario, servicio.id, { sectorId, titulo: 'Fugas y atascos', tipoPrecio: 'fijo', importe: 45 });
+    expect(editado.sectorActivo).toBe(false);
+  });
+
+  test('55. RF-14 Error: Sin perfil guardado, título demasiado largo o más de 30 servicios', async () => {
+    const { usuario: sinPerfil } = await crearSesion('nuevo@example.com');
+    await expect(logica.crearServicio(sinPerfil, { titulo: 'X', tipoPrecio: 'consultar' })).rejects.toThrow('Guarda primero tu perfil');
+
+    const { usuario, sectorId } = await profesionalConPerfil();
+    await expect(logica.crearServicio(usuario, { sectorId, titulo: 'x'.repeat(81), tipoPrecio: 'consultar' })).rejects.toThrow('80 caracteres');
+    for (let i = 0; i < 30; i++) await logica.crearServicio(usuario, { sectorId, titulo: `Servicio ${i}`, tipoPrecio: 'consultar' });
+    await expect(logica.crearServicio(usuario, { sectorId, titulo: 'El 31', tipoPrecio: 'consultar' })).rejects.toThrow('como máximo 30');
   });
 });

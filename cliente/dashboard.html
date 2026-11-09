@@ -143,6 +143,75 @@
         </div>
       </form>
 
+      <section class="panel" id="panel-servicios">
+        <div class="panel-cabecera panel-cabecera-accion">
+          <div>
+            <h2>Servicios</h2>
+            <p>Lo que ofreces y cuánto cuesta. Se publican en cuanto los guardas.</p>
+          </div>
+          <button type="button" class="btn btn-secondary" id="nuevo-servicio">Añadir servicio</button>
+        </div>
+        <p class="ayuda" id="servicios-aviso" hidden>Guarda tu perfil con al menos un sector para poder añadir servicios.</p>
+        <div id="lista-servicios" class="lista-servicios"></div>
+
+        <form id="form-servicio" class="form-servicio" hidden novalidate>
+          <h3 id="form-servicio-titulo">Nuevo servicio</h3>
+          <div class="rejilla">
+            <div class="form-group">
+              <label for="servicio-titulo">Título</label>
+              <input id="servicio-titulo" type="text" maxlength="80" placeholder="Ej.: Cambio de grifo">
+            </div>
+            <div class="form-group">
+              <label for="servicio-sector">Sector</label>
+              <select id="servicio-sector"></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="servicio-descripcion">Descripción (opcional)</label>
+            <textarea id="servicio-descripcion" maxlength="1000" rows="3" placeholder="Qué incluye, materiales, plazos..."></textarea>
+          </div>
+          <fieldset class="tipos-precio">
+            <legend>Cómo cobras este servicio</legend>
+            <div class="opciones-precio">
+                <label><input type="radio" name="tipo-precio" value="fijo" checked>Precio fijo</label>
+                <label><input type="radio" name="tipo-precio" value="hora">Por hora</label>
+                <label><input type="radio" name="tipo-precio" value="unidad">Por unidad</label>
+                <label><input type="radio" name="tipo-precio" value="desde">Desde</label>
+                <label><input type="radio" name="tipo-precio" value="consultar">A consultar</label>
+                <label><input type="radio" name="tipo-precio" value="presupuesto">Presupuesto cerrado</label>
+            </div>
+          </fieldset>
+          <div class="campos-precio">
+            <div class="form-group" data-para="fijo hora unidad desde">
+              <label for="servicio-importe" id="etiqueta-importe">Precio</label>
+              <div class="con-sufijo">
+                <input id="servicio-importe" type="text" inputmode="decimal" placeholder="0,00">
+                <span id="sufijo-importe">€</span>
+              </div>
+            </div>
+            <div class="form-group" data-para="unidad">
+              <label for="servicio-unidad">Unidad</label>
+              <input id="servicio-unidad" type="text" maxlength="20" placeholder="m², puerta, punto de luz...">
+            </div>
+            <label class="casilla" data-para="fijo hora unidad desde"><input type="checkbox" id="servicio-iva" checked><span>El precio incluye IVA</span></label>
+            <label class="casilla" data-para="presupuesto"><input type="checkbox" id="servicio-gratis" checked><span>El presupuesto es gratuito</span></label>
+            <div class="form-group" data-para="presupuesto-pago">
+              <label for="servicio-visita">Precio de la visita (opcional)</label>
+              <div class="con-sufijo">
+                <input id="servicio-visita" type="text" inputmode="decimal" placeholder="0,00">
+                <span>€</span>
+              </div>
+            </div>
+            <p class="ayuda" data-para="consultar">El cliente te preguntará el precio directamente.</p>
+            <p class="ayuda" data-para="presupuesto">Te comprometes a dar un precio cerrado tras ver el trabajo.</p>
+          </div>
+          <div class="acciones-form">
+            <button type="button" class="boton-texto" id="cancelar-servicio">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="guardar-servicio">Guardar servicio</button>
+          </div>
+        </form>
+      </section>
+
       <section class="panel zona-cuenta">
         <p>Si eliminas tu cuenta, tu ficha deja de mostrarse. Podrás volver a registrarte con el mismo correo.</p>
         <button id="btn-eliminar" class="btn btn-peligro" type="button">Eliminar mi cuenta</button>
@@ -164,12 +233,13 @@
           <p class="ficha-descripcion" id="previa-descripcion"></p>
           <ul class="ficha-sectores" id="previa-sectores"></ul>
           <div class="ficha-contacto" id="previa-contacto"></div>
-          <p class="ficha-precio ficha-vacia">Tus servicios y precios aparecerán aquí.</p>
+          <div id="previa-servicios"></div>
         </div>
       </article>
     </aside>
   </main>
 
+  <script src="precio.js"></script>
   <script src="perfil.js"></script>
 </body>
 </html>

@@ -23,6 +23,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   let ciudadesElegidas = []; // [{ id, nombre, provincia }]
   let logo = null;           // { id, url } o null
   let fotos = [];            // [{ id, url }]
+  let servicios = [];        // servicios guardados (ver Precio en precio.js)
+  let sectoresGuardados = []; // sectores del perfil tal como están en el servidor
+  let perfilGuardado = false;
+  let editandoServicio = null; // id del servicio que se edita, o null si es nuevo
 
   function cerrarSesion() {
     localStorage.removeItem('jwt_token');
@@ -46,7 +50,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const res = await fetch(ruta, opciones);
     const data = await res.json();
     if (res.status === 401) cerrarSesion();
-    if (!res.ok) throw new Error(data.error || 'Error en la petición');
+    if (!res.ok) {
+      const error = new Error(data.error || 'Error en la petición');
+      error.status = res.status;
+      error.datos = data;
+      throw error;
+    }
     return data;
   }
 
@@ -387,6 +396,186 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // --- Servicios (RF-14, RF-15) ---
+
+  const formServicio = document.getElementById('form-servicio');
+  const camposServicio = {
+    titulo: document.getElementById('servicio-titulo'),
+    sector: document.getElementById('servicio-sector'),
+    descripcion: document.getElementById('servicio-descripcion'),
+    importe: document.getElementById('servicio-importe'),
+    unidad: document.getElementById('servicio-unidad'),
+    iva: document.getElementById('servicio-iva'),
+    gratis: document.getElementById('servicio-gratis'),
+    visita: document.getElementById('servicio-visita')
+  };
+  const ETIQUETAS_IMPORTE = { fijo: 'Precio', hora: 'Precio por hora', unidad: 'Precio por unidad', desde: 'Precio mínimo' };
+  const SUFIJOS_IMPORTE = { fijo: '€', hora: '€/hora', unidad: '€', desde: '€' };
+
+  function tipoElegido() {
+    return formServicio.querySelector('input[name=tipo-precio]:checked').value;
+  }
+
+  // Muestra solo los campos que corresponden al tipo de precio elegido
+  function actualizarCamposPrecio() {
+    const tipo = tipoElegido();
+    formServicio.querySelectorAll('[data-para]').forEach(campo => {
+      const para = campo.dataset.para.split(' ');
+      const visible = para.includes(tipo) || (para.includes('presupuesto-pago') && tipo === 'presupuesto' && !camposServicio.gratis.checked);
+      campo.hidden = !visible;
+    });
+    if (ETIQUETAS_IMPORTE[tipo]) {
+      document.getElementById('etiqueta-importe').textContent = ETIQUETAS_IMPORTE[tipo];
+      document.getElementById('sufijo-importe').textContent = SUFIJOS_IMPORTE[tipo];
+    }
+  }
+  formServicio.querySelectorAll('input[name=tipo-precio]').forEach(r => r.addEventListener('change', actualizarCamposPrecio));
+  camposServicio.gratis.addEventListener('change', actualizarCamposPrecio);
+
+  // Importe en euros escrito a la española para rellenar el formulario al editar
+  const importeEnTexto = (importe) => (importe === null || importe === undefined ? '' : String(importe).replace('.', ','));
+
+  function abrirFormularioServicio(servicio = null) {
+    editandoServicio = servicio ? servicio.id : null;
+    document.getElementById('form-servicio-titulo').textContent = servicio ? 'Editar servicio' : 'Nuevo servicio';
+
+    // Sectores: los activos del perfil y, al editar, también el del servicio aunque se haya desactivado
+    const opciones = sectoresGuardados.filter(s => s.activo !== false || (servicio && s.id === servicio.sectorId));
+    camposServicio.sector.replaceChildren(...opciones.map(s => {
+      const opcion = document.createElement('option');
+      opcion.value = s.id;
+      opcion.textContent = s.activo === false ? `${s.nombre} (ya no se ofrece)` : s.nombre;
+      return opcion;
+    }));
+
+    camposServicio.titulo.value = servicio ? servicio.titulo : '';
+    camposServicio.descripcion.value = servicio ? servicio.descripcion : '';
+    if (servicio) camposServicio.sector.value = servicio.sectorId;
+    const tipo = servicio ? servicio.tipoPrecio : 'fijo';
+    formServicio.querySelector(`input[name=tipo-precio][value=${tipo}]`).checked = true;
+    camposServicio.importe.value = servicio ? importeEnTexto(servicio.importe) : '';
+    camposServicio.unidad.value = servicio && servicio.tipoPrecio === 'unidad' ? servicio.unidad : '';
+    camposServicio.iva.checked = servicio ? servicio.ivaIncluido !== false : true;
+    camposServicio.gratis.checked = servicio ? servicio.presupuestoGratis !== false : true;
+    camposServicio.visita.value = servicio ? importeEnTexto(servicio.precioVisita) : '';
+    actualizarCamposPrecio();
+
+    formServicio.hidden = false;
+    document.getElementById('nuevo-servicio').hidden = true;
+    formServicio.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    camposServicio.titulo.focus();
+  }
+
+  function cerrarFormularioServicio() {
+    formServicio.hidden = true;
+    editandoServicio = null;
+    document.getElementById('nuevo-servicio').hidden = false;
+  }
+
+  function pintarServicios() {
+    const puedeAnadir = perfilGuardado && sectoresGuardados.some(s => s.activo !== false);
+    document.getElementById('servicios-aviso').hidden = puedeAnadir;
+    document.getElementById('nuevo-servicio').disabled = !puedeAnadir;
+
+    const lista = document.getElementById('lista-servicios');
+    if (servicios.length === 0) {
+      const vacio = document.createElement('p');
+      vacio.className = 'servicios-vacio';
+      vacio.textContent = 'Todavía no has añadido servicios. Sin servicios, tu ficha no aparecerá en el buscador.';
+      lista.replaceChildren(vacio);
+    } else {
+      lista.replaceChildren(...servicios.map(servicio => {
+        const fila = document.createElement('div');
+        fila.className = 'servicio';
+
+        const info = document.createElement('div');
+        info.className = 'servicio-info';
+        const titulo = document.createElement('strong');
+        titulo.textContent = servicio.titulo;
+        const sector = document.createElement('span');
+        sector.textContent = servicio.sectorActivo === false ? `${servicio.sector} (ya no se ofrece)` : servicio.sector;
+        info.append(titulo, sector);
+
+        const precio = document.createElement('div');
+        precio.className = 'servicio-precio';
+        const importe = document.createElement('strong');
+        importe.textContent = Precio.texto(servicio);
+        const nota = document.createElement('span');
+        nota.textContent = Precio.iva(servicio) || Precio.TIPOS[servicio.tipoPrecio];
+        precio.append(importe, nota);
+
+        const acciones = document.createElement('div');
+        acciones.className = 'servicio-acciones';
+        const editar = document.createElement('button');
+        editar.type = 'button';
+        editar.className = 'boton-texto';
+        editar.textContent = 'Editar';
+        editar.addEventListener('click', () => abrirFormularioServicio(servicio));
+        const borrar = document.createElement('button');
+        borrar.type = 'button';
+        borrar.className = 'boton-texto peligro';
+        borrar.textContent = 'Borrar';
+        borrar.addEventListener('click', () => borrarServicio(servicio));
+        acciones.append(editar, borrar);
+
+        fila.append(info, precio, acciones);
+        return fila;
+      }));
+    }
+    pintarVistaPrevia();
+  }
+
+  document.getElementById('nuevo-servicio').addEventListener('click', () => abrirFormularioServicio());
+  document.getElementById('cancelar-servicio').addEventListener('click', cerrarFormularioServicio);
+
+  formServicio.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const tipo = tipoElegido();
+    const conImporte = Precio.CON_IMPORTE.includes(tipo);
+    const cuerpo = {
+      sectorId: Number(camposServicio.sector.value),
+      titulo: camposServicio.titulo.value,
+      descripcion: camposServicio.descripcion.value,
+      tipoPrecio: tipo,
+      importe: conImporte ? camposServicio.importe.value : null,
+      unidad: tipo === 'unidad' ? camposServicio.unidad.value : null,
+      ivaIncluido: camposServicio.iva.checked,
+      presupuestoGratis: camposServicio.gratis.checked,
+      precioVisita: tipo === 'presupuesto' && !camposServicio.gratis.checked ? camposServicio.visita.value : null
+    };
+    const boton = document.getElementById('guardar-servicio');
+    boton.disabled = true;
+    try {
+      if (editandoServicio) {
+        const editado = await peticion('PUT', `/api/perfil/servicios/${editandoServicio}`, cuerpo);
+        servicios = servicios.map(s => (s.id === editado.id ? editado : s));
+        mostrarMensaje(`Servicio «${editado.titulo}» guardado`, true, false);
+      } else {
+        const creado = await peticion('POST', '/api/perfil/servicios', cuerpo);
+        servicios.push(creado);
+        mostrarMensaje(`Servicio «${creado.titulo}» publicado`, true, false);
+      }
+      cerrarFormularioServicio();
+      pintarServicios();
+    } catch (error) {
+      mostrarMensaje(error.message);
+    } finally {
+      boton.disabled = false;
+    }
+  });
+
+  async function borrarServicio(servicio) {
+    if (!confirm(`¿Borrar el servicio «${servicio.titulo}»?`)) return;
+    try {
+      await peticion('DELETE', `/api/perfil/servicios/${servicio.id}`);
+      servicios = servicios.filter(s => s.id !== servicio.id);
+      if (editandoServicio === servicio.id) cerrarFormularioServicio();
+      pintarServicios();
+    } catch (error) {
+      mostrarMensaje(error.message);
+    }
+  }
+
   // --- Vista previa de la ficha y progreso ---
 
   function listaDeCiudades(ciudades) {
@@ -465,12 +654,49 @@ document.addEventListener('DOMContentLoaded', async () => {
       }));
     }
 
-    // Progreso: lo que el profesional puede completar en esta página
+    // Servicios: los tres primeros con su precio
+    const previaServicios = document.getElementById('previa-servicios');
+    if (servicios.length === 0) {
+      textoVacio(previaServicios, 'Tus servicios y precios aparecerán aquí.');
+    } else {
+      const lista = document.createElement('ul');
+      lista.className = 'ficha-servicios';
+      servicios.slice(0, 3).forEach(servicio => {
+        const li = document.createElement('li');
+        const titulo = document.createElement('span');
+        titulo.textContent = servicio.titulo;
+        const precio = document.createElement('span');
+        const importe = document.createElement('strong');
+        importe.textContent = Precio.texto(servicio);
+        if (servicio.tipoPrecio === 'presupuesto' && servicio.presupuestoGratis) importe.className = 'gratis';
+        precio.appendChild(importe);
+        const iva = Precio.iva(servicio, true);
+        if (iva) {
+          const nota = document.createElement('small');
+          nota.textContent = iva;
+          precio.appendChild(nota);
+        }
+        li.append(titulo, precio);
+        lista.appendChild(li);
+      });
+      const elementos = [lista];
+      if (servicios.length > 3) {
+        const mas = document.createElement('p');
+        mas.className = 'ficha-mas';
+        const resto = servicios.length - 3;
+        mas.textContent = `y ${resto} ${resto === 1 ? 'servicio más' : 'servicios más'}`;
+        elementos.push(mas);
+      }
+      previaServicios.replaceChildren(...elementos);
+    }
+
+    // Progreso: lo que necesita la ficha para poder publicarse (RN-01)
     const pasos = [
       ['Nombre comercial', Boolean(nombre)],
       ['Contacto', medios.length > 0],
       ['Sectores', sectores.length > 0 && sectores.every(s => s.especialidad.trim())],
-      ['Zona de actuación', ciudadesElegidas.length > 0]
+      ['Zona de actuación', ciudadesElegidas.length > 0],
+      ['Servicios', servicios.length > 0]
     ];
     const hechos = pasos.filter(([, ok]) => ok).length;
     document.getElementById('progreso-titulo').innerHTML = '';
@@ -500,6 +726,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Si el servidor no envía imágenes (por ejemplo, una versión anterior), la página sigue funcionando
     logo = perfil.logo || null;
     fotos = Array.isArray(perfil.fotos) ? [...perfil.fotos] : [];
+    servicios = Array.isArray(perfil.servicios) ? [...perfil.servicios] : [];
+    sectoresGuardados = Array.isArray(perfil.sectores) ? [...perfil.sectores] : [];
+    perfilGuardado = Boolean(perfil.existe);
+    pintarServicios();
     pintarCiudades();
     pintarLogo();
     pintarGaleria();
@@ -520,7 +750,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       const cuerpo = Object.fromEntries(Object.entries(campos).map(([clave, input]) => [clave, input.value]));
       cuerpo.sectores = sectoresDelFormulario().map(({ sectorId, especialidad }) => ({ sectorId, especialidad }));
       cuerpo.ciudades = ciudadesElegidas.map(c => c.id);
-      const perfil = await peticion('PUT', '/api/perfil', cuerpo);
+      let perfil;
+      try {
+        perfil = await peticion('PUT', '/api/perfil', cuerpo);
+      } catch (error) {
+        // RN-03: al quitar sectores con servicios, el servidor pide confirmación antes de borrarlos
+        if (error.status !== 409 || !error.datos.servicios) throw error;
+        const lista = error.datos.servicios.map(s => `  · ${s.titulo} (${s.sector})`).join('\n');
+        if (!confirm(`Al quitar ese sector se borrarán estos servicios:\n\n${lista}\n\n¿Quieres continuar?`)) {
+          mostrarMensaje('No se ha guardado el perfil. Vuelve a marcar el sector si quieres conservar sus servicios.');
+          return;
+        }
+        perfil = await peticion('PUT', '/api/perfil', { ...cuerpo, confirmarBorrado: true });
+      }
       const sectores = await peticion('GET', '/api/sectores');
       pintarSectores(sectores, perfil.sectores);
       pintarPerfil(perfil);

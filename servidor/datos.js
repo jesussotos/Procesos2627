@@ -125,6 +125,26 @@ async function inicializar() {
     )
   `);
 
+  // Servicios del profesional (RF-14). Los importes se guardan en céntimos para no arrastrar
+  // errores de redondeo de los decimales (D-25). tipo_precio admite los cinco tipos de la
+  // especificación más el presupuesto cerrado (D-26)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS servicios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      perfil_id INTEGER NOT NULL REFERENCES perfiles(id),
+      sector_id INTEGER NOT NULL REFERENCES sectores(id),
+      titulo TEXT NOT NULL,
+      descripcion TEXT,
+      tipo_precio TEXT NOT NULL CHECK (tipo_precio IN ('fijo', 'hora', 'unidad', 'desde', 'consultar', 'presupuesto')),
+      importe_centimos INTEGER,
+      unidad TEXT,
+      iva_incluido INTEGER,
+      presupuesto_gratis INTEGER,
+      visita_centimos INTEGER,
+      actualizado INTEGER NOT NULL
+    )
+  `);
+
   // Imágenes del profesional: logo (como mucho uno) y fotos de sus trabajos.
   // Se guardan en la base de datos porque el disco de Cloud Run se borra en cada despliegue (D-24)
   await db.execute(`
@@ -371,9 +391,62 @@ module.exports = {
   borrarPerfilDeUsuario: async (usuarioId) => {
     const perfil = await buscarUno('SELECT id FROM perfiles WHERE usuario_id = ?', [usuarioId]);
     if (!perfil) return;
+    await consultar('DELETE FROM servicios WHERE perfil_id = ?', [perfil.id]);
     await consultar('DELETE FROM perfil_sectores WHERE perfil_id = ?', [perfil.id]);
     await consultar('DELETE FROM perfil_ciudades WHERE perfil_id = ?', [perfil.id]);
     await consultar('DELETE FROM perfiles WHERE id = ?', [perfil.id]);
+  },
+
+  // --- Servicios ---
+
+  serviciosDePerfil: async (perfilId) => {
+    const resultado = await consultar(
+      `SELECT sv.*, s.nombre AS sector_nombre, s.activo AS sector_activo
+       FROM servicios sv JOIN sectores s ON s.id = sv.sector_id
+       WHERE sv.perfil_id = ? ORDER BY sv.id`,
+      [perfilId]
+    );
+    return aObjetos(resultado);
+  },
+
+  // Servicio junto con el usuario dueño del perfil (para comprobar RN-02)
+  buscarServicio: async (id) => {
+    return buscarUno(
+      `SELECT sv.*, p.usuario_id FROM servicios sv JOIN perfiles p ON p.id = sv.perfil_id WHERE sv.id = ?`,
+      [id]
+    );
+  },
+
+  crearServicio: async (perfilId, s) => {
+    const resultado = await consultar(
+      `INSERT INTO servicios (perfil_id, sector_id, titulo, descripcion, tipo_precio, importe_centimos,
+         unidad, iva_incluido, presupuesto_gratis, visita_centimos, actualizado)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [perfilId, s.sectorId, s.titulo, s.descripcion, s.tipoPrecio, s.importeCentimos,
+        s.unidad, s.ivaIncluido, s.presupuestoGratis, s.visitaCentimos, Date.now()]
+    );
+    return Number(resultado.lastInsertRowid);
+  },
+
+  actualizarServicio: async (id, s) => {
+    await consultar(
+      `UPDATE servicios SET sector_id = ?, titulo = ?, descripcion = ?, tipo_precio = ?, importe_centimos = ?,
+         unidad = ?, iva_incluido = ?, presupuesto_gratis = ?, visita_centimos = ?, actualizado = ?
+       WHERE id = ?`,
+      [s.sectorId, s.titulo, s.descripcion, s.tipoPrecio, s.importeCentimos,
+        s.unidad, s.ivaIncluido, s.presupuestoGratis, s.visitaCentimos, Date.now(), id]
+    );
+  },
+
+  borrarServicio: async (id) => {
+    await consultar('DELETE FROM servicios WHERE id = ?', [id]);
+  },
+
+  // RN-03: al quitar sectores del perfil se borran sus servicios
+  borrarServiciosDeSectores: async (perfilId, sectorIds) => {
+    for (const sectorId of sectorIds) {
+      await consultar('DELETE FROM servicios WHERE perfil_id = ? AND sector_id = ?', [perfilId, sectorId]);
+    }
   },
 
   // --- Imágenes (logo y fotos de trabajos) ---
@@ -420,6 +493,7 @@ module.exports = {
 
   // Solo para las pruebas: vacía los datos (las ciudades son un catálogo fijo)
   limpiar: async () => {
+    await consultar('DELETE FROM servicios');
     await consultar('DELETE FROM imagenes');
     await consultar('DELETE FROM perfil_sectores');
     await consultar('DELETE FROM perfil_ciudades');
