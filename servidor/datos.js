@@ -180,12 +180,45 @@ async function insertarVarios(tabla, columnas, filas, verbo = 'INSERT') {
   });
 }
 
-const listo = inicializar();
-listo.catch((err) => console.error('[datos] No se pudo inicializar la base de datos:', err.message));
+// Preparación de la base (tablas, migraciones y catálogos), con reintentos (D-33).
+// Si falla, por ejemplo por un corte de red al arrancar la instancia de Cloud Run, no se da por
+// perdida: se reintenta con esperas crecientes y, si aun así falla, la siguiente consulta vuelve a
+// intentarlo. Antes se intentaba una sola vez y el fallo dejaba la instancia sin base de datos.
+const REINTENTOS_PREPARACION = 4;
+let preparacion = null;
 
-// Ejecuta una consulta esperando a que la base esté inicializada
+const esperar = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
+
+async function inicializarConReintentos() {
+  for (let intento = 1; ; intento++) {
+    try {
+      await inicializar();
+      if (intento > 1) console.log(`[datos] Base de datos preparada al intento ${intento}`);
+      return;
+    } catch (err) {
+      if (intento >= REINTENTOS_PREPARACION) throw err;
+      console.error(`[datos] Intento ${intento} de preparar la base de datos fallido (${err.message}); se reintenta`);
+      await esperar(500 * 2 ** (intento - 1)); // 0,5 s, 1 s y 2 s
+    }
+  }
+}
+
+// Promesa de la preparación en curso o terminada; si falla del todo, se olvida para reintentarla
+function baseLista() {
+  if (!preparacion) {
+    preparacion = inicializarConReintentos().catch((err) => {
+      preparacion = null;
+      console.error('[datos] No se pudo inicializar la base de datos:', err.message);
+      throw err;
+    });
+  }
+  return preparacion;
+}
+baseLista().catch(() => {}); // se empieza a preparar al arrancar; el error ya queda en el log
+
+// Ejecuta una consulta esperando a que la base esté preparada
 async function consultar(sql, args = []) {
-  await listo;
+  await baseLista();
   return db.execute({ sql, args });
 }
 
