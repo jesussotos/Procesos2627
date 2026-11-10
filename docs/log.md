@@ -4,6 +4,7 @@ Este bundle documenta el estado comprobable del repositorio; la última actualiz
 
 ## Cronología
 
+- 2026-11-10 · Rama `fix/reintento-base-datos`: la preparación de la base de datos se reintenta si falla la conexión con Turso al arrancar, en lugar de dejar la instancia sin base de datos (D-33).
 - 2026-11-09 · Rama `feat/tarjeta-unica`: la vista previa de «Mi perfil», los resultados del buscador y el ejemplo del acceso usan la misma tarjeta, con fotos, descripción, especialidades y contacto (D-32).
 - 2026-11-09 · Rama `feat/controles-formulario`: desplegables y sugerencias en un menú verde propio, casillas personalizadas y confirmaciones de borrado en el sitio, sin ventanas del navegador (D-31).
 - 2026-11-09 · Rama `feat/buscador`: buscador público en `/` con filtros en la URL, ficha pública, RN-01 en SQL y estado de publicación en «Mi perfil» (RF-16 a RF-21; D-28 a D-30); el acceso pasa a `/acceso.html`; 64 pruebas.

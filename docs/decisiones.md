@@ -167,4 +167,10 @@ Las decisiones D-07 a D-13 del dominio del Sprint 2 están en la especificación
 - **Diferencia intencionada:** En el buscador los servicios mostrados son solo los que cumplen los filtros (apartado 4.4); en la vista previa aparecen todos.
 - **Estado:** vigente.
 
+## D-33: Reintentos al preparar la base de datos
+
+- **Qué se decidió:** La preparación de la base al arrancar (tablas, migraciones y catálogos) se reintenta hasta cuatro veces con esperas crecientes (0,5 s, 1 s y 2 s). Si aun así falla, no se da por perdida: la siguiente consulta vuelve a intentarlo.
+- **Por qué:** El 10 de noviembre una instancia de Cloud Run arrancó con un corte momentáneo de red hacia Turso (`fetch failed`). Como la preparación se intentaba una sola vez y el fallo quedaba guardado, todas las peticiones a la API fallaron hasta reiniciar la instancia, aunque la base de datos estaba activa.
+- **Estado:** vigente.
+
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**
