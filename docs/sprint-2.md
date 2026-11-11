@@ -18,7 +18,7 @@ Convertir la gestión de usuarios del Sprint 1 en un directorio de profesionales
 | RF-09 | hecho | Borrado lógico desde el panel de administración y desde «Eliminar mi cuenta». |
 | RNF-02 | hecho | Sin secreto JWT de respaldo; el servidor no arranca sin `JWT_SECRET`. |
 | RNF-05 | hecho | Desplegado en Google Cloud Run; URL en el README. |
-| RNF-06 | hecho | 70 pruebas con `npm test`, incluidas las del acceso con Google. |
+| RNF-06 | hecho | 72 pruebas con `npm test`, incluidas las del acceso con Google y las de la retroalimentación (D-35). |
 | PRO-01 | Por verificar | Comprobar los PR en GitHub. |
 | PRO-02 | Por verificar | Comprobar las ejecuciones del CI en GitHub. |
 | PRO-03 | hecho | Cloud Run despliega automáticamente cada cambio en `main`. |

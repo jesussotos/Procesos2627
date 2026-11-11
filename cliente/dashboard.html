@@ -44,6 +44,7 @@
       <div id="mensaje" class="alert" role="status"></div>
 
       <form id="form-perfil" class="perfil-formulario" novalidate>
+        <p class="nota-obligatorio"><span class="obligatorio" aria-hidden="true">*</span> Campo obligatorio</p>
         <section class="panel">
           <div class="panel-cabecera">
             <h2>Tu negocio</h2>
@@ -51,7 +52,7 @@
           </div>
           <div class="campos">
             <div class="form-group">
-              <label for="nombre-comercial">Nombre comercial</label>
+              <label for="nombre-comercial">Nombre comercial <span class="obligatorio" aria-hidden="true">*</span></label>
               <input id="nombre-comercial" type="text" maxlength="80" required>
             </div>
             <div class="form-group">
@@ -93,17 +94,23 @@
 
         <section class="panel">
           <div class="panel-cabecera">
-            <h2>Contacto</h2>
+            <h2>Contacto <span class="obligatorio" aria-hidden="true">*</span></h2>
             <p>Rellena al menos uno. Tu correo de acceso no se muestra nunca.</p>
           </div>
           <div class="rejilla">
             <div class="form-group">
               <label for="telefono">Teléfono</label>
-              <input id="telefono" type="tel" maxlength="20" autocomplete="tel">
+              <div class="con-prefijo">
+                <input id="telefono-prefijo" class="prefijo" type="text" inputmode="tel" maxlength="4" value="+34" aria-label="Prefijo del teléfono">
+                <input id="telefono" type="tel" maxlength="20" autocomplete="tel-national" placeholder="600 111 222">
+              </div>
             </div>
             <div class="form-group">
               <label for="whatsapp">WhatsApp</label>
-              <input id="whatsapp" type="tel" maxlength="20">
+              <div class="con-prefijo">
+                <input id="whatsapp-prefijo" class="prefijo" type="text" inputmode="tel" maxlength="4" value="+34" aria-label="Prefijo del WhatsApp">
+                <input id="whatsapp" type="tel" maxlength="20" placeholder="600 111 222">
+              </div>
             </div>
             <div class="form-group">
               <label for="email-contacto">Correo de contacto</label>
@@ -118,16 +125,16 @@
 
         <section class="panel">
           <div class="panel-cabecera">
-            <h2>Sectores</h2>
-            <p>Marca los oficios en los que trabajas y describe tu especialidad en cada uno.</p>
+            <h2>Sectores <span class="obligatorio" aria-hidden="true">*</span></h2>
+            <p>Marca al menos un oficio en el que trabajas y describe tu especialidad en cada uno.</p>
           </div>
           <div id="lista-sectores" class="lista-sectores"><p class="ayuda">Cargando sectores...</p></div>
         </section>
 
         <section class="panel">
           <div class="panel-cabecera">
-            <h2>Zona de actuación</h2>
-            <p>Ciudades a las que te desplazas para trabajar.</p>
+            <h2>Zona de actuación <span class="obligatorio" aria-hidden="true">*</span></h2>
+            <p>Añade al menos una ciudad a la que te desplazas para trabajar.</p>
           </div>
           <div class="campos">
             <div class="form-group buscador-ciudad">
@@ -160,11 +167,11 @@
           <h3 id="form-servicio-titulo">Nuevo servicio</h3>
           <div class="rejilla">
             <div class="form-group">
-              <label for="servicio-titulo">Título</label>
+              <label for="servicio-titulo">Título <span class="obligatorio" aria-hidden="true">*</span></label>
               <input id="servicio-titulo" type="text" maxlength="80" placeholder="Ej.: Cambio de grifo">
             </div>
             <div class="form-group">
-              <label for="servicio-sector">Sector</label>
+              <label for="servicio-sector">Sector <span class="obligatorio" aria-hidden="true">*</span></label>
               <select id="servicio-sector"></select>
             </div>
           </div>
@@ -185,14 +192,14 @@
           </fieldset>
           <div class="campos-precio">
             <div class="form-group" data-para="fijo hora unidad desde">
-              <label for="servicio-importe" id="etiqueta-importe">Precio</label>
+              <label for="servicio-importe"><span id="etiqueta-importe">Precio</span> <span class="obligatorio" aria-hidden="true">*</span></label>
               <div class="con-sufijo">
                 <input id="servicio-importe" type="text" inputmode="decimal" placeholder="0,00">
                 <span id="sufijo-importe">€</span>
               </div>
             </div>
             <div class="form-group" data-para="unidad">
-              <label for="servicio-unidad">Unidad</label>
+              <label for="servicio-unidad">Unidad <span class="obligatorio" aria-hidden="true">*</span></label>
               <input id="servicio-unidad" type="text" maxlength="20" placeholder="m², puerta, punto de luz...">
             </div>
             <label class="casilla" data-para="fijo hora unidad desde"><input type="checkbox" id="servicio-iva" checked><span>El precio incluye IVA</span></label>

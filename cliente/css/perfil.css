@@ -562,3 +562,26 @@
     text-align: center;
   }
 }
+
+/* Campos obligatorios (D-35): asterisco rojo, el aviso habitual en los formularios */
+.obligatorio {
+  margin-left: 2px;
+  font-weight: 600;
+  color: var(--rojo);
+}
+
+.nota-obligatorio {
+  font-size: 0.8125rem;
+  color: var(--grafito);
+}
+
+/* Teléfono y WhatsApp: prefijo internacional aparte (+34 por defecto) y el número */
+.con-prefijo {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.con-prefijo .prefijo {
+  text-align: center;
+}

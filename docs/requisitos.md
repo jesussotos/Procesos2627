@@ -58,8 +58,8 @@ timestamp: 2026-11-06
 | ID | Requisito | Estado | Evidencia |
 |---|---|---|---|
 | RF-11 | Crear y editar el perfil | hecho | `GET` y `PUT /api/perfil`; página «Mi perfil» (`cliente/dashboard.html`). Nombre comercial obligatorio y al menos un dato de contacto válido (pruebas 29, 35 y 36). |
-| RF-12 | Elegir sectores con especialidad | hecho | Casillas con especialidad obligatoria en «Mi perfil» (pruebas 29, 30 y 35). |
-| RF-13 | Definir la zona de actuación | hecho | Autocompletado de ciudades y lista de ciudades elegidas en «Mi perfil» (pruebas 29, 30 y 33). |
+| RF-12 | Elegir sectores con especialidad | hecho | Casillas con especialidad obligatoria en «Mi perfil»; al menos un sector para guardar (D-35; pruebas 29, 30, 35 y 71). |
+| RF-13 | Definir la zona de actuación | hecho | Autocompletado de ciudades y lista de ciudades elegidas en «Mi perfil»; al menos una ciudad para guardar (D-35; pruebas 29, 30, 33 y 71). |
 | RF-14 | Crear un servicio con su precio | hecho | `POST /api/perfil/servicios`; seis tipos de precio (D-26), importes en céntimos (D-25), como máximo 30 servicios (pruebas 45, 46, 49 y 55). Bloque «Servicios» en «Mi perfil». |
 | RF-15 | Editar y borrar los servicios propios | hecho | `PUT` y `DELETE /api/perfil/servicios/:id` (pruebas 51, 52 y 54). |
 | RF-16 | Ver si el perfil está publicado y qué le falta | hecho | `GET /api/perfil` devuelve `publicacion` (`publicado` y `faltan`) según RN-01; «Mi perfil» lo muestra con un enlace a la ficha pública (pruebas 56 y 57). |
