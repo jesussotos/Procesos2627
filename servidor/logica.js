@@ -343,9 +343,37 @@ function exigirProfesional(usuario) {
 // Debe ofrecer: enviarConfirmacion(email, token)
 let correo = null;
 
+// Adaptador de Google (RF-04), inyectado igual que el de correo. Debe ofrecer:
+// urlAutorizacion(estado) y obtenerIdentidad(codigo) -> { googleId, email, emailVerificado }.
+// Es null si el servidor no tiene credenciales de Google.
+let google = null;
+
+// Sesión que se entrega al entrar, sea con contraseña o con Google: el mismo JWT en los dos casos
+function emitirSesion(usuario) {
+  const token = jwt.sign(
+    { id: usuario.id, email: usuario.email, rol: usuario.rol },
+    secretoJwt(),
+    { expiresIn: '2h' }
+  );
+  return {
+    token,
+    usuario: { id: usuario.id, email: usuario.email, rol: usuario.rol }
+  };
+}
+
+// Contraseña de una cuenta creada con Google: un hash de un valor aleatorio que nadie conoce.
+// La columna no admite vacíos y así esa cuenta solo puede entrar con Google (D-34)
+async function passwordInutilizable() {
+  return bcrypt.hash(crypto.randomBytes(32).toString('hex'), await bcrypt.genSalt(10));
+}
+
 const logica = {
   configurarCorreo: (adaptador) => {
     correo = adaptador;
+  },
+
+  configurarGoogle: (adaptador) => {
+    google = adaptador;
   },
 
   // Registro asíncrono: la cuenta queda pendiente hasta confirmar el correo.
@@ -437,16 +465,76 @@ const logica = {
     }
 
     // Incluimos el rol en el token JWT
-    const token = jwt.sign(
-      { id: usuario.id, email: usuario.email, rol: usuario.rol },
-      secretoJwt(),
-      { expiresIn: '2h' }
-    );
+    return emitirSesion(usuario);
+  },
 
-    return {
-      token,
-      usuario: { id: usuario.id, email: usuario.email, rol: usuario.rol }
-    };
+  // --- Acceso con Google (RF-04, D-34) ---
+
+  // URL de Google a la que se manda al usuario al pulsar «Continuar con Google»
+  urlAccesoGoogle: (estado) => {
+    if (!google) {
+      throw errorDe('El acceso con Google no está disponible en este momento', 503);
+    }
+    return google.urlAutorizacion(estado);
+  },
+
+  // Vuelta de Google con el código de autorización. Casos según el email verificado de Google:
+  // - Cuenta ya vinculada o cuenta con ese email (activa o pendiente): se vincula y queda activa.
+  // - Cuenta eliminada: se reactiva desde cero, sin el perfil ni las imágenes de antes (RN-11, D-17).
+  // - Email nuevo: se crea un profesional activo, sin contraseña utilizable.
+  // En todos los casos se entrega el mismo JWT que con usuario y contraseña.
+  entrarConGoogle: async (codigo) => {
+    if (!google) {
+      throw errorDe('El acceso con Google no está disponible en este momento', 503);
+    }
+    if (!codigo) {
+      throw errorDe('Google no ha devuelto el código de acceso', 400);
+    }
+
+    let identidad;
+    try {
+      identidad = await google.obtenerIdentidad(codigo);
+    } catch (error) {
+      console.error('[google] No se pudo obtener la identidad:', error.message);
+      throw errorDe('No se pudo completar el acceso con Google. Inténtalo de nuevo', 502);
+    }
+    const { googleId, email, emailVerificado } = identidad;
+    if (!googleId || !email) {
+      throw errorDe('Google no ha devuelto los datos de la cuenta', 502);
+    }
+    if (!emailVerificado) {
+      throw errorDe('Tu cuenta de Google no tiene el correo verificado', 403);
+    }
+
+    let usuario = await datos.buscarPorGoogleId(googleId) || await datos.buscarPorEmail(email);
+
+    if (!usuario) {
+      const nuevo = await datos.guardar({
+        email,
+        password: await passwordInutilizable(),
+        rol: 'profesional',
+        estado: 'activo',
+        googleId
+      });
+      console.log(`[google] Cuenta ${email} creada con Google`);
+      return emitirSesion(nuevo);
+    }
+
+    if (usuario.estado === 'eliminado') {
+      await datos.borrarPerfilDeUsuario(usuario.id);
+      await datos.borrarImagenesDeUsuario(usuario.id);
+      await datos.reactivar(usuario.id, {
+        password: await passwordInutilizable(),
+        rol: 'profesional',
+        tokenConfirmacion: null,
+        tokenExpira: null
+      });
+      console.log(`[google] Cuenta ${usuario.email} reactivada con Google`);
+    }
+    await datos.vincularGoogle(usuario.id, googleId);
+
+    usuario = await datos.buscarPorId(usuario.id);
+    return emitirSesion(usuario);
   },
 
   // Verificación de token JWT (solo firma y caducidad)

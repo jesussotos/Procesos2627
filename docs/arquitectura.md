@@ -7,7 +7,7 @@ timestamp: 2026-11-06
 
 ## Backend
 
-- **API:** [servidor/api.js](../servidor/api.js). Express sirve los archivos estáticos, valida la autenticación y aplica el rol. También es el punto de composición: comprueba que existe `JWT_SECRET` (si no, no arranca), crea el adaptador de correo y lo inyecta en la lógica con `logica.configurarCorreo(...)`.
+- **API:** [servidor/api.js](../servidor/api.js). Express sirve los archivos estáticos, valida la autenticación y aplica el rol. También es el punto de composición: comprueba que existe `JWT_SECRET` (si no, no arranca), crea los adaptadores de correo y de Google y los inyecta en la lógica con `logica.configurarCorreo(...)` y `logica.configurarGoogle(...)`. También gestiona la cookie `state` del acceso con Google (D-34).
 - **Lógica:** [servidor/logica.js](../servidor/logica.js). Registro (cuenta pendiente + token de confirmación de 24 h; reactiva cuentas eliminadas), confirmación de cuenta, inicio de sesión (solo cuentas activas), comprobación de sesión contra la base de datos, estado de usuario, eliminación lógica con sus permisos, bcrypt, JWT y alta automática del administrador.
 - **Datos:** [servidor/datos.js](../servidor/datos.js). Acceso asíncrono a SQLite con `@libsql/client`. Al arrancar prepara la base con reintentos (D-33). Elige la base según el entorno: Turso si existe `TURSO_DATABASE_URL`, el archivo `servidor/database.sqlite` (o `DB_PATH`) si no, y una base en memoria en las pruebas (`NODE_ENV=test`). Al arrancar aplica las migraciones: añade `token_confirmacion` y `token_expira`, convierte la columna booleana `confirmado` en `estado` (`pendiente`, `activo` o `eliminado`) y renombra el rol `usuario` a `profesional`. También crea las tablas `sectores` y `ciudades` y las rellena con los datos de [servidor/catalogos.js](../servidor/catalogos.js): los sectores solo si la tabla está vacía (para no deshacer los cambios del administrador) y las ciudades con `INSERT OR IGNORE`.
 - **Perfil:** tablas `perfiles` (uno por usuario), `perfil_sectores` (con la especialidad) y `perfil_ciudades`. `PUT /api/perfil` valida todo antes de escribir y sustituye las listas completas.
@@ -16,6 +16,7 @@ timestamp: 2026-11-06
 - **Buscador:** una consulta SQL une perfiles, usuarios, ciudades, servicios y sectores activos, aplica RN-01 y los filtros, agrupa por perfil con `MIN(importe)` como precio de referencia, ordena y pagina con `LIMIT`/`OFFSET`. Los detalles de los 20 resultados se leen con cuatro consultas `IN (...)`, no una por resultado.
 - **Utilidades:** [servidor/normalizar.js](../servidor/normalizar.js) quita mayúsculas, tildes y espacios repetidos; lo usan los sectores (RN-05) y la búsqueda de ciudades.
 - **Correo:** [servidor/correo.js](../servidor/correo.js). Adaptador de la API HTTP de Brevo (`POST https://api.brevo.com/v3/smtp/email`). Se usa HTTP en lugar de SMTP porque algunos proveedores cloud con capa gratuita bloquean los puertos SMTP salientes. En las pruebas se sustituye por un adaptador falso.
+- **Google:** [servidor/google.js](../servidor/google.js). Adaptador de OAuth 2.0 (RF-04): construye la URL de `accounts.google.com` y cambia el código de autorización por la identidad (`googleId`, email y si está verificado) en `oauth2.googleapis.com/token`. Si faltan `GOOGLE_CLIENT_ID` o `GOOGLE_CLIENT_SECRET` devuelve `null` y el acceso con Google queda desactivado sin afectar al resto. En las pruebas se sustituye por un adaptador falso.
 
 ## Frontend
 
@@ -35,6 +36,8 @@ El navegador cruza la frontera mediante peticiones HTTP a `/api/...`. [servidor/
 | POST | `/api/usuarios/registro` | Cualquier cliente |
 | POST | `/api/usuarios/login` | Cualquier cliente (solo cuentas confirmadas) |
 | GET | `/api/usuarios/confirmar?token=...` | Cualquier cliente con un token válido; redirige a `/?confirmacion=...` |
+| GET | `/api/oauth/google` | Cualquier cliente; redirige a Google (RF-04) |
+| GET | `/api/oauth/google/retorno?code=&state=` | Vuelta desde Google; redirige a `/acceso.html#google=<token>` o a `/acceso.html?google=error&motivo=...` |
 | GET | `/api/usuarios/me` | Usuario con sesión válida |
 | GET | `/api/usuarios` | Administrador con sesión válida |
 | GET | `/api/usuarios/:id/activo` | Administrador con sesión válida |

@@ -173,4 +173,20 @@ Las decisiones D-07 a D-13 del dominio del Sprint 2 están en la especificación
 - **Por qué:** El 10 de noviembre una instancia de Cloud Run arrancó con un corte momentáneo de red hacia Turso (`fetch failed`). Como la preparación se intentaba una sola vez y el fallo quedaba guardado, todas las peticiones a la API fallaron hasta reiniciar la instancia, aunque la base de datos estaba activa.
 - **Estado:** vigente.
 
+## D-34: Inicio de sesión con Google en el servidor
+
+- **Qué se decidió:** RF-04 se implementa con el flujo de código de autorización de OAuth 2.0, entero en el servidor y sin librerías nuevas:
+  1. «Continuar con Google» lleva a `GET /api/oauth/google`, que guarda un valor aleatorio `state` en una cookie `HttpOnly` de 10 minutos y redirige a Google pidiendo solo `openid email`.
+  2. Google vuelve a `GET /api/oauth/google/retorno`. Si el `state` no coincide con la cookie, se rechaza (protección CSRF). Si coincide, el servidor cambia el código por los datos de la cuenta usando el secreto de cliente, que nunca llega al navegador.
+  3. El servidor entrega el mismo JWT que el inicio de sesión con contraseña, en el fragmento de la URL (`/acceso.html#google=...`), que el navegador no envía al servidor ni queda en los registros. `acceso.html` lo guarda y lleva al panel.
+- **Cuentas:** Solo se acepta un email verificado por Google. La cuenta se busca primero por el identificador de Google (columna `google_id`, única) y después por el email:
+  - Email nuevo: profesional activo, sin correo de confirmación.
+  - Cuenta activa con contraseña: se vincula y conserva los dos accesos.
+  - Cuenta pendiente de confirmar: se vincula y queda activa, porque Google ya ha verificado el correo; el enlace de confirmación deja de servir.
+  - Cuenta eliminada: se reactiva desde cero, sin el perfil ni las imágenes de antes, como al volver a registrarse (RN-11, D-17).
+- **Contraseña:** La columna `password` no admite vacíos, así que una cuenta creada con Google guarda el hash de un valor aleatorio que nadie conoce: solo puede entrar con Google.
+- **Modo Prueba:** La pantalla de consentimiento de Google se queda en modo Prueba. Publicarla exige una página principal y una política de privacidad en un dominio propio verificado, y el dominio `run.app` de Cloud Run no se puede autorizar. Solo pueden entrar con Google las cuentas añadidas como usuarios de prueba en Google Cloud (hasta 100); el resto puede seguir registrándose con email y contraseña. Publicarla más adelante no requiere cambiar código.
+- **Configuración:** `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` (secreto en Secret Manager). La URL de vuelta es `APP_URL` + `/api/oauth/google/retorno` y debe estar registrada en el cliente OAuth de Google, igual que `http://localhost:3000/api/oauth/google/retorno` para desarrollo.
+- **Estado:** vigente.
+
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**

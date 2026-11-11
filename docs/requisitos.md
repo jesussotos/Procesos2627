@@ -13,7 +13,7 @@ timestamp: 2026-11-06
 | RF-01 | Registro de usuario local | hecho | `POST /api/usuarios/registro` y `registrarUsuario`. |
 | RF-02 | Confirmación de cuenta por correo | hecho | `servidor/correo.js` (API HTTP de Brevo), `GET /api/usuarios/confirmar?token=...`; token de un solo uso con caducidad de 24 h; pruebas 1, 5, 6, 7 y 8. |
 | RF-03 | Inicio de sesión local | hecho | `POST /api/usuarios/login` y comprobación con bcrypt. |
-| RF-04 | Inicio de sesión con OAuth | pendiente | Planificado en el Sprint 2 (Google). |
+| RF-04 | Inicio de sesión con OAuth | hecho | Google, flujo de código de autorización en el servidor (D-34). |
 | RF-05 | Cierre de sesión | hecho | El cliente elimina `jwt_token` y `rol`. |
 | RF-06 | Mantenimiento de la sesión entre recargas | hecho | `localStorage` y `GET /api/usuarios/me`. |
 | RF-07 | Listar usuarios (administrador) | hecho | `GET /api/usuarios` exige el rol `admin` y devuelve email, rol y estado; `cliente/admin.html` los muestra (prueba 19). |

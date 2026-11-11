@@ -16,6 +16,17 @@ function crearCorreoFalso() {
   };
 }
 
+// Adaptador de Google falso (RF-04): solo acepta 'codigo-valido' y devuelve la identidad indicada
+function crearGoogleFalso(identidad) {
+  return {
+    urlAutorizacion: (estado) => `https://google.test/auth?state=${estado}`,
+    obtenerIdentidad: async (codigo) => {
+      if (codigo !== 'codigo-valido') throw new Error('invalid_grant');
+      return identidad;
+    }
+  };
+}
+
 describe('Pruebas unitarias de la capa de lógica', () => {
   let correo;
 
@@ -23,6 +34,7 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     await datos.limpiar();
     correo = crearCorreoFalso();
     logica.configurarCorreo(correo);
+    logica.configurarGoogle(null);
   });
 
   // Registra y confirma, como haría el usuario al pulsar el enlace del correo
@@ -727,5 +739,72 @@ describe('Pruebas unitarias de la capa de lógica', () => {
 
     await logica.eliminarUsuario(usuario, usuario.id);
     await expect(logica.obtenerFichaPublica(perfilId)).rejects.toThrow('no está disponible');
+  });
+
+  // --- Sprint 2: acceso con Google (RF-04, D-34) ---
+
+  // Entra con Google con la identidad dada; devuelve la sesión y el usuario tal como lo ve la API
+  async function entrarConGoogle(email, { googleId = `g-${email}`, emailVerificado = true } = {}) {
+    logica.configurarGoogle(crearGoogleFalso({ googleId, email, emailVerificado }));
+    const sesion = await logica.entrarConGoogle('codigo-valido');
+    return { ...sesion, actual: await logica.comprobarSesion(sesion.token) };
+  }
+
+  test('65. RF-04: Con Google se crea un profesional activo, sin correo de confirmación ni contraseña', async () => {
+    const { usuario, actual } = await entrarConGoogle('nuevo@gmail.com');
+    expect(usuario).toEqual(expect.objectContaining({ email: 'nuevo@gmail.com', rol: 'profesional' }));
+    expect(actual.id).toBe(usuario.id);
+    expect((await logica.usuarioActivo(usuario.id)).activo).toBe(true);
+    expect(correo.enviados).toHaveLength(0);
+    // No tiene contraseña utilizable: con contraseña no se entra
+    await expect(logica.iniciarSesion('nuevo@gmail.com', '')).rejects.toThrow('Credenciales incorrectas');
+    await expect(logica.registrarUsuario('nuevo@gmail.com', '123456')).rejects.toThrow('El usuario ya existe');
+  });
+
+  test('66. RF-04: Una cuenta con contraseña se vincula a Google y conserva los dos accesos', async () => {
+    const { usuario } = await crearSesion('mixto@gmail.com');
+    const { usuario: conGoogle } = await entrarConGoogle('mixto@gmail.com');
+    expect(conGoogle.id).toBe(usuario.id);
+    const res = await logica.iniciarSesion('mixto@gmail.com', '123456');
+    expect(res.usuario.id).toBe(usuario.id);
+  });
+
+  test('67. RF-04: Una cuenta pendiente queda activa al entrar con Google y su enlace deja de servir', async () => {
+    await logica.registrarUsuario('pendiente@gmail.com', '123456');
+    const enlace = correo.ultimoToken();
+    const { usuario } = await entrarConGoogle('pendiente@gmail.com');
+    expect((await logica.usuarioActivo(usuario.id)).estado).toBe('activo');
+    await expect(logica.confirmarCuenta(enlace)).rejects.toThrow('no es válido');
+  });
+
+  test('68. RF-04/RN-11: Una cuenta eliminada se reactiva desde cero al entrar con Google', async () => {
+    const { usuario } = await crearSesion('vuelve@gmail.com');
+    await logica.guardarPerfil(usuario, await perfilBase());
+    await logica.eliminarUsuario(usuario, usuario.id);
+
+    const { usuario: reactivado, actual } = await entrarConGoogle('vuelve@gmail.com');
+    expect(reactivado.id).toBe(usuario.id);
+    expect((await logica.obtenerPerfil(actual)).existe).toBe(false);
+    // La contraseña de antes ya no vale
+    await expect(logica.iniciarSesion('vuelve@gmail.com', '123456')).rejects.toThrow('Credenciales incorrectas');
+  });
+
+  test('69. RF-04: La cuenta se reconoce por su identificador de Google aunque cambie el correo', async () => {
+    const primera = await entrarConGoogle('antiguo@gmail.com', { googleId: 'g-123' });
+    const segunda = await entrarConGoogle('nuevo@gmail.com', { googleId: 'g-123' });
+    expect(segunda.usuario.id).toBe(primera.usuario.id);
+    expect(await logica.listarUsuarios()).toHaveLength(1);
+  });
+
+  test('70. RF-04 Error: Correo no verificado, código no válido o Google sin configurar', async () => {
+    await expect(logica.entrarConGoogle('codigo-valido')).rejects.toThrow('no está disponible');
+    expect(() => logica.urlAccesoGoogle('x')).toThrow('no está disponible');
+
+    await expect(entrarConGoogle('raro@gmail.com', { emailVerificado: false }))
+      .rejects.toThrow('no tiene el correo verificado');
+    await expect(logica.entrarConGoogle('codigo-inventado')).rejects.toThrow('No se pudo completar el acceso con Google');
+    await expect(logica.entrarConGoogle('')).rejects.toThrow('no ha devuelto el código');
+    expect(await logica.listarUsuarios()).toHaveLength(0);
+    expect(logica.urlAccesoGoogle('abc')).toContain('state=abc');
   });
 });

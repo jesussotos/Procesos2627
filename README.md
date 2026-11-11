@@ -53,6 +53,7 @@ Durante el **Sprint 1** se ha desarrollado la arquitectura base de la solución,
 - **Framework Web:** [Express.js](https://expressjs.com/)
 - **Base de Datos:** SQLite mediante [`@libsql/client`](https://github.com/tursodatabase/libsql-client-ts): [Turso](https://turso.tech/) en producción, archivo local o memoria en desarrollo y pruebas
 - **Correo:** API HTTP de [Brevo](https://www.brevo.com/) para la confirmación de cuentas
+- **Inicio de sesión con Google:** OAuth 2.0 (flujo de código de autorización), sin librerías externas
 - **Seguridad:**
   - Hashing de contraseñas: `bcryptjs`
   - Autenticación: `jsonwebtoken` (JWT)
@@ -88,7 +89,8 @@ Copia `.env.example` como `.env` y rellena los valores. `JWT_SECRET` es **obliga
 | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | No | Base de datos en Turso. Sin ellas se usa el archivo local. |
 | `DB_PATH` | No | Ruta del archivo SQLite local (por defecto `servidor/database.sqlite`). |
 | `BREVO_API_KEY`, `MAIL_FROM`, `MAIL_FROM_NAME` | Sí | Envío del correo de confirmación. |
-| `APP_URL` | No | URL base del enlace de confirmación (en producción, la URL pública). |
+| `APP_URL` | No | URL base del enlace de confirmación y de la vuelta desde Google (en producción, la URL pública, sin barra final). |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | No | Inicio de sesión con Google (RF-04). Sin ellas, el botón «Continuar con Google» muestra que no está disponible. |
 | `PORT` | No | Puerto del servidor (por defecto 3000). |
 
 ### **4. Arrancar y probar**
@@ -97,4 +99,4 @@ npm start      # http://localhost:3000
 npm test       # pruebas unitarias de la lógica (Jest)
 ```
 
-Las pruebas usan siempre una base de datos en memoria y un correo falso, de modo que nunca tocan los datos de Turso ni envían correos.
+Las pruebas usan siempre una base de datos en memoria, un correo falso y un Google falso, de modo que nunca tocan los datos de Turso ni envían correos.

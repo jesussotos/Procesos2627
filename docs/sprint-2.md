@@ -13,12 +13,12 @@ Convertir la gestión de usuarios del Sprint 1 en un directorio de profesionales
 
 | ID | Estado | Nota |
 |---|---|---|
-| RF-04 | pendiente | Inicio de sesión con Google. |
+| RF-04 | hecho | Inicio de sesión con Google: botón «Continuar con Google» en `/acceso.html` (D-34). |
 | RF-08 | hecho | `GET /api/usuarios/:id/activo` y botón «¿Activo?» en el panel de administración. |
 | RF-09 | hecho | Borrado lógico desde el panel de administración y desde «Eliminar mi cuenta». |
 | RNF-02 | hecho | Sin secreto JWT de respaldo; el servidor no arranca sin `JWT_SECRET`. |
 | RNF-05 | hecho | Desplegado en Google Cloud Run; URL en el README. |
-| RNF-06 | hecho | 64 pruebas con `npm test`; se ampliarán con las reglas de negocio del Sprint 2. |
+| RNF-06 | hecho | 70 pruebas con `npm test`, incluidas las del acceso con Google. |
 | PRO-01 | Por verificar | Comprobar los PR en GitHub. |
 | PRO-02 | Por verificar | Comprobar las ejecuciones del CI en GitHub. |
 | PRO-03 | hecho | Cloud Run despliega automáticamente cada cambio en `main`. |
@@ -44,4 +44,4 @@ Convertir la gestión de usuarios del Sprint 1 en un directorio de profesionales
 | 4 | Perfil del profesional (RF-11 a RF-13) | hecho |
 | 5 | Servicios con precio (RF-14, RF-15) | hecho |
 | 6 | Búsqueda y ficha pública (RF-18 a RF-21) | hecho |
-| 7 | Inicio de sesión con Google (RF-04) | pendiente |
+| 7 | Inicio de sesión con Google (RF-04) | hecho |

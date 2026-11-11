@@ -43,6 +43,10 @@
           <h2>Tu cuenta de profesional</h2>
           <p class="intro">Entra para gestionar tu ficha o crea una cuenta nueva.</p>
 
+          <!-- RF-04: con Google no hace falta contraseña ni confirmar el correo -->
+          <a class="btn btn-secondary btn-google" href="/api/oauth/google">Continuar con Google</a>
+          <p class="acceso-separador"><span>o con tu correo</span></p>
+
           <div class="tabs" role="tablist">
             <button id="tab-login" class="tab-btn active" type="button" onclick="mostrarFormulario('login')">Iniciar sesión</button>
             <button id="tab-registro" class="tab-btn" type="button" onclick="mostrarFormulario('registro')">Crear cuenta</button>

@@ -47,7 +47,9 @@ async function inicializar() {
   // si la columna ya existe, SQLite devuelve error y simplemente lo ignoramos.
   const migraciones = [
     'ALTER TABLE usuarios ADD COLUMN token_confirmacion TEXT',
-    'ALTER TABLE usuarios ADD COLUMN token_expira INTEGER'
+    'ALTER TABLE usuarios ADD COLUMN token_expira INTEGER',
+    // RF-04: identificador de la cuenta de Google vinculada (D-34)
+    'ALTER TABLE usuarios ADD COLUMN google_id TEXT'
   ];
   for (const sql of migraciones) {
     try {
@@ -70,6 +72,9 @@ async function inicializar() {
     await db.execute("UPDATE usuarios SET estado = CASE WHEN confirmado = 1 THEN 'activo' ELSE 'pendiente' END");
     console.log('[datos] Migración: columna confirmado convertida en estado');
   }
+
+  // Una cuenta de Google solo puede estar vinculada a un usuario (SQLite admite varios NULL)
+  await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS usuarios_google_id ON usuarios (google_id)');
 
   // El rol `usuario` del Sprint 1 se llama `profesional` desde el Sprint 2
   await db.execute("UPDATE usuarios SET rol = 'profesional' WHERE rol = 'usuario'");
@@ -230,7 +235,7 @@ function aObjetos(resultado) {
 }
 
 // Columnas que se devuelven de un usuario (la columna antigua `confirmado`, si existe, se ignora)
-const COLUMNAS = 'id, email, password, rol, estado, token_confirmacion, token_expira';
+const COLUMNAS = 'id, email, password, rol, estado, token_confirmacion, token_expira, google_id';
 
 function aSector(fila) {
   if (!fila) return null;
@@ -288,14 +293,15 @@ async function buscarUno(sql, args) {
 module.exports = {
   guardar: async (usuario) => {
     const resultado = await consultar(
-      'INSERT INTO usuarios (email, password, rol, estado, token_confirmacion, token_expira) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO usuarios (email, password, rol, estado, token_confirmacion, token_expira, google_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         usuario.email,
         usuario.password,
         usuario.rol || 'profesional',
         usuario.estado || 'pendiente',
         usuario.tokenConfirmacion || null,
-        usuario.tokenExpira || null
+        usuario.tokenExpira || null,
+        usuario.googleId || null
       ]
     );
     return {
@@ -312,6 +318,18 @@ module.exports = {
 
   buscarPorEmail: async (email) => {
     return buscarUno(`SELECT ${COLUMNAS} FROM usuarios WHERE email = ?`, [email]);
+  },
+
+  buscarPorGoogleId: async (googleId) => {
+    return buscarUno(`SELECT ${COLUMNAS} FROM usuarios WHERE google_id = ?`, [googleId]);
+  },
+
+  // RF-04: vincula la cuenta de Google y la deja activa (Google ya ha verificado el correo)
+  vincularGoogle: async (id, googleId) => {
+    await consultar(
+      "UPDATE usuarios SET google_id = ?, estado = 'activo', token_confirmacion = NULL, token_expira = NULL WHERE id = ?",
+      [googleId, id]
+    );
   },
 
   buscarPorTokenConfirmacion: async (token) => {
