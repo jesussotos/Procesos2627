@@ -1,9 +1,11 @@
 const express = require('express');
 const path = require('path');
+const crypto = require('crypto');
 const morgan = require('morgan');
 require('dotenv').config();
 const logica = require('./logica');
 const { crearCorreoBrevo } = require('./correo');
+const { crearAccesoGoogle } = require('./google');
 
 // RNF-02: sin JWT_SECRET el servidor no arranca, para no funcionar nunca con un secreto inventado
 if (!process.env.JWT_SECRET) {
@@ -13,14 +15,26 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// URL pública de la aplicación: la usan el enlace de confirmación y la vuelta desde Google
+const URL_BASE = (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 
-// Composición: se crea el adaptador de correo y se inyecta en la lógica
+// Composición: se crean los adaptadores de correo y de Google y se inyectan en la lógica
 logica.configurarCorreo(crearCorreoBrevo({
   apiKey: process.env.BREVO_API_KEY,
   remitente: process.env.MAIL_FROM,
   nombreRemitente: process.env.MAIL_FROM_NAME,
-  urlBase: (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '')
+  urlBase: URL_BASE
 }));
+
+const accesoGoogle = crearAccesoGoogle({
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  urlRetorno: `${URL_BASE}/api/oauth/google/retorno`
+});
+logica.configurarGoogle(accesoGoogle);
+if (!accesoGoogle) {
+  console.warn('[google] Faltan GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET: el acceso con Google queda desactivado');
+}
 
 app.use(express.json());
 app.use(morgan('dev'));
@@ -91,6 +105,65 @@ app.get('/api/usuarios/confirmar', async (req, res) => {
     res.redirect('/acceso.html?confirmacion=ok');
   } catch (error) {
     res.redirect(`/acceso.html?confirmacion=error&motivo=${encodeURIComponent(error.message)}`);
+  }
+});
+
+// --- ACCESO CON GOOGLE (RF-04, D-34) ---
+
+// Cookie con el valor `state` de OAuth: al volver de Google se compara con el que trae la URL,
+// para que nadie pueda colar en tu navegador un acceso que no has empezado tú (CSRF)
+const COOKIE_ESTADO = 'oauth_estado';
+const OPCIONES_COOKIE_ESTADO = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: URL_BASE.startsWith('https://'),
+  path: '/api/oauth'
+};
+
+function leerCookie(req, nombre) {
+  for (const parte of (req.headers.cookie || '').split(';')) {
+    const [clave, ...valor] = parte.trim().split('=');
+    if (clave === nombre) return decodeURIComponent(valor.join('='));
+  }
+  return null;
+}
+
+function volverConErrorGoogle(res, motivo) {
+  res.redirect(`/acceso.html?google=error&motivo=${encodeURIComponent(motivo)}`);
+}
+
+// «Continuar con Google»: manda al usuario a Google
+app.get('/api/oauth/google', (req, res) => {
+  try {
+    const estado = crypto.randomBytes(16).toString('hex');
+    const url = logica.urlAccesoGoogle(estado);
+    res.cookie(COOKIE_ESTADO, estado, { ...OPCIONES_COOKIE_ESTADO, maxAge: 10 * 60 * 1000 });
+    res.redirect(url);
+  } catch (error) {
+    volverConErrorGoogle(res, error.message);
+  }
+});
+
+// Google vuelve aquí. El JWT se pasa en el fragmento (#) de la URL: el navegador no lo envía
+// al servidor ni queda en los registros, y acceso.html lo guarda como en un inicio de sesión normal
+app.get('/api/oauth/google/retorno', async (req, res) => {
+  const { code, state, error } = req.query;
+  const esperado = leerCookie(req, COOKIE_ESTADO);
+  res.clearCookie(COOKIE_ESTADO, OPCIONES_COOKIE_ESTADO);
+
+  if (error) {
+    return volverConErrorGoogle(res, error === 'access_denied'
+      ? 'Has cancelado el acceso con Google'
+      : 'Google no ha permitido el acceso');
+  }
+  if (!state || !esperado || state !== esperado) {
+    return volverConErrorGoogle(res, 'La solicitud de acceso con Google ha caducado. Inténtalo de nuevo');
+  }
+  try {
+    const sesion = await logica.entrarConGoogle(code);
+    res.redirect(`/acceso.html#google=${encodeURIComponent(sesion.token)}`);
+  } catch (err) {
+    volverConErrorGoogle(res, err.message);
   }
 });
 

@@ -80,6 +80,27 @@
   gap: 16px;
 }
 
+/* Acceso con Google (RF-04): botón blanco con borde fino, como el resto de botones secundarios */
+.btn-google {
+  width: 100%;
+}
+
+.acceso-separador {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 8px;
+  font-size: 0.8125rem;
+  color: var(--grafito);
+}
+
+.acceso-separador::before,
+.acceso-separador::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--linea);
+}
+
 /* Pestañas: iniciar sesión / crear cuenta */
 .tabs {
   display: flex;

@@ -136,6 +136,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Vuelta del acceso con Google (RF-04): el servidor deja el token en el fragmento #google=...
+  // Se guarda como en un inicio de sesión normal y se quita de la barra de direcciones
+  if (window.location.hash.startsWith('#google=')) {
+    const token = decodeURIComponent(window.location.hash.slice('#google='.length));
+    window.history.replaceState({}, '', window.location.pathname);
+    localStorage.setItem('jwt_token', token);
+    entrarConToken(token);
+    return;
+  }
+
+  // Con el token ya guardado, pide los datos de la sesión y lleva a cada uno a su panel
+  async function entrarConToken(token) {
+    try {
+      const res = await fetch('/api/usuarios/me', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) throw new Error();
+      const { usuario } = await res.json();
+      localStorage.setItem('rol', usuario.rol);
+      window.location.href = usuario.rol === 'admin' ? '/admin.html' : '/dashboard.html';
+    } catch (error) {
+      localStorage.removeItem('jwt_token');
+      mostrarMensaje('No se pudo completar el acceso con Google. Inténtalo de nuevo');
+      verificarSesion();
+    }
+  }
+
   // Resultado de la confirmación por correo (el servidor redirige aquí con ?confirmacion=...)
   const params = new URLSearchParams(window.location.search);
   if (params.get('confirmacion') === 'ok') {
@@ -146,7 +171,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (params.get('cuenta') === 'eliminada') {
     mostrarMensaje('Tu cuenta se ha eliminado. Puedes volver a registrarte con el mismo correo cuando quieras.', true);
   }
-  if (params.has('confirmacion') || params.has('cuenta')) {
+  if (params.get('google') === 'error') {
+    mostrarMensaje(params.get('motivo') || 'No se pudo completar el acceso con Google');
+  }
+  if (params.has('confirmacion') || params.has('cuenta') || params.has('google')) {
     window.history.replaceState({}, '', window.location.pathname);
   }
 
