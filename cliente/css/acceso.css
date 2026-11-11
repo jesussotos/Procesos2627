@@ -80,9 +80,33 @@
   gap: 16px;
 }
 
-/* Acceso con Google (RF-04): botón blanco con borde fino, como el resto de botones secundarios */
+/* Acceso con Google (RF-04): tema claro de las directrices de marca de Google (D-34).
+   Fondo blanco, borde de 1 px #747775, texto #1F1F1F, «G» a color sin modificar y
+   12 px antes de la G, 10 px entre la G y el texto y 12 px después. Roboto en lugar de
+   Google Sans, que no se puede usar libremente en webs */
 .btn-google {
   width: 100%;
+  gap: 10px;
+  padding: 0 12px;
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: #1F1F1F;
+  background: #FFFFFF;
+  border-color: #747775;
+}
+
+.btn-google:hover {
+  background: #F7F8F8;
+}
+
+.btn-google:active {
+  background: #EDEEEE;
+}
+
+.logo-google {
+  flex: none;
 }
 
 .acceso-separador {
