@@ -4,6 +4,7 @@ Este bundle documenta el estado comprobable del repositorio; la última actualiz
 
 ## Cronología
 
+- 2026-11-11 · Rama `feat/mejoras-formulario`: cambios por la retroalimentación del profesor y los compañeros: «Todos los oficios» en los atajos del buscador, asteriscos en los campos obligatorios, prefijo +34 aparte en teléfono y WhatsApp, y sector y ciudad obligatorios para guardar el perfil (D-35); 72 pruebas.
 - 2026-11-11 · Rama `feat/google-oauth`: inicio de sesión con Google en el servidor, con vinculación de cuentas por email verificado (RF-04, D-34); 70 pruebas. La pantalla de consentimiento queda en modo Prueba.
 - 2026-11-10 · Rama `fix/reintento-base-datos`: la preparación de la base de datos se reintenta si falla la conexión con Turso al arrancar, en lugar de dejar la instancia sin base de datos (D-33).
 - 2026-11-09 · Rama `feat/tarjeta-unica`: la vista previa de «Mi perfil», los resultados del buscador y el ejemplo del acceso usan la misma tarjeta, con fotos, descripción, especialidades y contacto (D-32).

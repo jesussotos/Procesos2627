@@ -189,4 +189,15 @@ Las decisiones D-07 a D-13 del dominio del Sprint 2 están en la especificación
 - **Configuración:** `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` (secreto en Secret Manager). La URL de vuelta es `APP_URL` + `/api/oauth/google/retorno` y debe estar registrada en el cliente OAuth de Google, igual que `http://localhost:3000/api/oauth/google/retorno` para desarrollo.
 - **Estado:** vigente.
 
+## D-35: Cambios por la retroalimentación del Sprint 2
+
+- **Origen:** Revisión del Sprint 2 con el profesor y los compañeros (11 de noviembre).
+- **Qué se decidió:**
+  - **Buscador:** los atajos de «Busca por oficio» empiezan por «Todos los oficios» y marcan el oficio elegido, igual que el desplegable. Antes, para volver a todos había que cambiar el desplegable de arriba.
+  - **Campos obligatorios:** «Mi perfil» marca con un asterisco rojo el nombre comercial, el contacto (al menos uno), los sectores, la zona de actuación y, en los servicios, el título, el sector, el precio y la unidad, con la nota «* Campo obligatorio».
+  - **Teléfono y WhatsApp con prefijo:** el prefijo internacional va en un campo aparte con +34 por defecto, que se puede cambiar. Es válido + seguido de 1 a 3 cifras. Con +34 el número tiene 9 cifras; con otros prefijos, de 4 a 14 y 15 en total como mucho (E.164). Se guarda junto en la misma columna, como «+34 600 111 222», así que la ficha y el enlace de WhatsApp no cambian. Un número guardado antes sin prefijo se entiende español.
+  - **Sector y ciudad obligatorios:** el perfil no se guarda sin al menos un sector y una ciudad, y lo comprueba el servidor, no solo el formulario. Antes se podía guardar sin ellos, aunque la ficha no se publicaba (RN-01): un negocio sin ciudad no se puede encontrar y sin sector no puede tener servicios. Los perfiles que ya existían sin ellos no se rompen: se pedirán al volver a guardar.
+- **Pendiente:** El profesor señaló que las fichas tardan en cargar. Las causas probables son el arranque en frío de Cloud Run, la preparación de la base al arrancar, las consultas seguidas a Turso y las imágenes servidas a tamaño completo desde la base. Queda aplazado por baja prioridad.
+- **Estado:** vigente.
+
 Para cualquier motivo no citado aquí: **TODO(alumno): indicar la fuente concreta de la decisión.**

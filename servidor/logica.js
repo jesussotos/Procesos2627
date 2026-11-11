@@ -77,12 +77,40 @@ function textoLimpio(valor, campo, maximo, { obligatorio = false, multilinea = f
   return limpio;
 }
 
+// Teléfono con prefijo internacional (D-35). Se guarda siempre como «+34 600 111 222»:
+// - Sin prefijo se entiende España (+34), como antes.
+// - El prefijo es + y de 1 a 3 cifras, separado del número por un espacio.
+// - Con +34 el número tiene 9 cifras; con otros prefijos, de 4 a 14 y 15 en total como mucho (E.164).
 function telefonoValido(valor, campo) {
-  const limpio = textoLimpio(valor, campo, LIMITES_PERFIL.telefono);
-  if (limpio && !/^\+?[0-9 ]{6,19}$/.test(limpio)) {
+  const limpio = textoLimpio(valor, campo, LIMITES_PERFIL.telefono + 5);
+  if (!limpio) return null;
+  if (!/^\+?[0-9 ]+$/.test(limpio)) {
     throw errorDe(`El ${campo} solo puede tener números, espacios y un + inicial`, 400);
   }
-  return limpio;
+  let prefijo = '34';
+  let numero = limpio;
+  if (limpio.startsWith('+')) {
+    const conEspacio = limpio.match(/^\+(\d+) (.+)$/);
+    if (conEspacio) {
+      [, prefijo, numero] = conEspacio;
+    } else if (limpio.startsWith('+34')) {
+      numero = limpio.slice(3);
+    } else {
+      throw errorDe(`Escribe el prefijo del ${campo} aparte del número`, 400);
+    }
+  }
+  if (prefijo.length > 3) {
+    throw errorDe(`El prefijo del ${campo} debe ser + seguido de 1 a 3 cifras`, 400);
+  }
+  const cifras = numero.replace(/ /g, '');
+  if (prefijo === '34') {
+    if (cifras.length !== 9) throw errorDe(`Un ${campo} español (+34) tiene 9 cifras`, 400);
+    return `+34 ${cifras.slice(0, 3)} ${cifras.slice(3, 6)} ${cifras.slice(6)}`;
+  }
+  if (cifras.length < 4 || prefijo.length + cifras.length > 15) {
+    throw errorDe(`El ${campo} no tiene un número de cifras válido`, 400);
+  }
+  return `+${prefijo} ${cifras}`;
 }
 
 function emailValido(valor) {
@@ -727,6 +755,8 @@ const logica = {
     // RF-12 + RN-04: sectores del catálogo, sin repetir, con especialidad
     const listaSectores = entrada.sectores ?? [];
     if (!Array.isArray(listaSectores)) throw errorDe('Los sectores deben ser una lista', 400);
+    // D-35: sin sector no hay servicios, así que al menos uno es obligatorio para guardar
+    if (listaSectores.length === 0) throw errorDe('Elige al menos un sector', 400);
     if (listaSectores.length > LIMITES_PERFIL.maximoSectores) {
       throw errorDe(`Puedes elegir como máximo ${LIMITES_PERFIL.maximoSectores} sectores`, 400);
     }
@@ -750,6 +780,8 @@ const logica = {
     // RF-13 + RN-07: ciudades del catálogo y sin repetir
     const listaCiudades = entrada.ciudades ?? [];
     if (!Array.isArray(listaCiudades)) throw errorDe('Las ciudades deben ser una lista', 400);
+    // D-35: sin ciudad el negocio no se puede encontrar, así que al menos una es obligatoria para guardar
+    if (listaCiudades.length === 0) throw errorDe('Añade al menos una ciudad a tu zona de actuación', 400);
     if (listaCiudades.length > LIMITES_PERFIL.maximoCiudades) {
       throw errorDe(`Puedes elegir como máximo ${LIMITES_PERFIL.maximoCiudades} ciudades`, 400);
     }

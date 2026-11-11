@@ -13,6 +13,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     emailContacto: document.getElementById('email-contacto'),
     web: document.getElementById('web')
   };
+  // Prefijo internacional de teléfono y WhatsApp, en un campo aparte con +34 por defecto (D-35)
+  const prefijos = {
+    telefono: document.getElementById('telefono-prefijo'),
+    whatsapp: document.getElementById('whatsapp-prefijo')
+  };
   const contenedorSectores = document.getElementById('lista-sectores');
   const inputCiudad = document.getElementById('buscar-ciudad');
   const listaSugerencias = document.getElementById('sugerencias');
@@ -661,10 +666,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // --- Teléfonos con prefijo (D-35) ---
+
+  // El servidor guarda «+34 600 111 222»; los números antiguos sin prefijo son españoles
+  function separarTelefono(valor) {
+    const texto = (valor || '').trim();
+    const conPrefijo = texto.match(/^\+(\d{1,3}) (.*)$/);
+    if (conPrefijo) return ['+' + conPrefijo[1], conPrefijo[2]];
+    if (texto.startsWith('+34')) return ['+34', texto.slice(3).trim()];
+    if (texto.startsWith('+')) return ['', texto];
+    return ['+34', texto];
+  }
+
+  // Prefijo y número juntos para enviarlos; sin número, el campo va vacío aunque haya prefijo
+  function unirTelefono(clave) {
+    const numero = campos[clave].value.trim();
+    if (!numero) return '';
+    const prefijo = prefijos[clave].value.trim();
+    if (!prefijo) return numero;
+    return `${prefijo.startsWith('+') ? prefijo : `+${prefijo}`} ${numero}`;
+  }
+
   // --- Cargar y guardar ---
 
   function pintarPerfil(perfil) {
     Object.entries(campos).forEach(([clave, input]) => { input.value = perfil[clave] || ''; });
+    Object.keys(prefijos).forEach((clave) => {
+      [prefijos[clave].value, campos[clave].value] = separarTelefono(perfil[clave]);
+    });
     document.getElementById('contador-descripcion').textContent = campos.descripcion.value.length;
     ciudadesElegidas = Array.isArray(perfil.ciudades) ? [...perfil.ciudades] : [];
     // Si el servidor no envía imágenes (por ejemplo, una versión anterior), la página sigue funcionando
@@ -693,6 +722,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     boton.disabled = true;
     try {
       const cuerpo = Object.fromEntries(Object.entries(campos).map(([clave, input]) => [clave, input.value]));
+      cuerpo.telefono = unirTelefono('telefono');
+      cuerpo.whatsapp = unirTelefono('whatsapp');
       cuerpo.sectores = sectoresDelFormulario().map(({ sectorId, especialidad }) => ({ sectorId, especialidad }));
       cuerpo.ciudades = ciudadesElegidas.map(c => c.id);
       let perfil;

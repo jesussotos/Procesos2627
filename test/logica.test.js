@@ -591,7 +591,9 @@ describe('Pruebas unitarias de la capa de lógica', () => {
   // servicios: [{ sector: 'Fontanería', titulo, tipoPrecio, importe }]
   async function publicar(email, { ciudades = ['madrid'], servicios = [], nombre } = {}) {
     const { usuario } = await crearSesion(email);
+    // D-35: el perfil necesita al menos un sector aunque todavía no tenga servicios
     const nombresSectores = [...new Set(servicios.map(sv => sv.sector))];
+    if (nombresSectores.length === 0) nombresSectores.push('Fontanería');
     const sectores = {};
     for (const n of nombresSectores) sectores[n] = await sector(n);
     const perfil = await logica.guardarPerfil(usuario, {
@@ -637,7 +639,7 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     await datos.reactivar(pendiente.id, { password: 'x', rol: 'profesional', tokenConfirmacion: 't', tokenExpira: Date.now() });
 
     expect((await buscar()).total).toBe(0);
-    expect((await logica.obtenerPerfil(sinServicios)).publicacion).toEqual({ publicado: false, faltan: ['un sector', 'un servicio'] });
+    expect((await logica.obtenerPerfil(sinServicios)).publicacion).toEqual({ publicado: false, faltan: ['un servicio'] });
   });
 
   test('58. RN-04: Los servicios de un sector desactivado no cuentan para publicar ni para buscar', async () => {
@@ -731,7 +733,7 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     const ficha = await logica.obtenerFichaPublica(perfilId);
     expect(ficha).toEqual(expect.objectContaining({
       nombreComercial: 'Fontanería Discreta',
-      contacto: { telefono: '600111222' },
+      contacto: { telefono: '+34 600 111 222' },
       sectores: [expect.objectContaining({ nombre: 'Fontanería', especialidad: 'General' })]
     }));
     expect(ficha.servicios.map(sv => sv.titulo)).toEqual(['Fugas']);
@@ -806,5 +808,34 @@ describe('Pruebas unitarias de la capa de lógica', () => {
     await expect(logica.entrarConGoogle('')).rejects.toThrow('no ha devuelto el código');
     expect(await logica.listarUsuarios()).toHaveLength(0);
     expect(logica.urlAccesoGoogle('abc')).toContain('state=abc');
+  });
+
+  // --- Retroalimentación del Sprint 2 (D-35) ---
+
+  test('71. D-35 Error: Sin al menos un sector y una ciudad no se guarda el perfil', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    const entrada = await perfilBase();
+    await expect(logica.guardarPerfil(usuario, { ...entrada, ciudades: [] })).rejects.toThrow('al menos una ciudad');
+    await expect(logica.guardarPerfil(usuario, { ...entrada, sectores: [] })).rejects.toThrow('al menos un sector');
+    expect((await logica.obtenerPerfil(usuario)).existe).toBe(false);
+  });
+
+  test('72. D-35: Teléfono y WhatsApp con prefijo; sin prefijo se entiende +34', async () => {
+    const { usuario } = await crearSesion('pro@example.com');
+    const entrada = await perfilBase();
+    const guardar = (telefono, whatsapp = '') => logica.guardarPerfil(usuario, { ...entrada, telefono, whatsapp });
+
+    let perfil = await guardar('600111222', '+44 7911 123456');
+    expect(perfil.telefono).toBe('+34 600 111 222');
+    expect(perfil.whatsapp).toBe('+44 7911123456');
+    perfil = await guardar('+34 600 11 12 22', '+34612345678');
+    expect(perfil.telefono).toBe('+34 600 111 222');
+    expect(perfil.whatsapp).toBe('+34 612 345 678');
+
+    await expect(guardar('+34 60011122')).rejects.toThrow('9 cifras');
+    await expect(guardar('+1234 5551234')).rejects.toThrow('de 1 a 3 cifras');
+    await expect(guardar('+447911123456')).rejects.toThrow('prefijo del teléfono aparte');
+    await expect(guardar('+1 12')).rejects.toThrow('número de cifras válido');
+    await expect(guardar('600111222', '+34 6')).rejects.toThrow('WhatsApp español');
   });
 });

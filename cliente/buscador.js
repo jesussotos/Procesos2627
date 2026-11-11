@@ -30,25 +30,37 @@ document.addEventListener('DOMContentLoaded', async () => {
       opcion.textContent = sector.nombre;
       selectSector.appendChild(opcion);
     });
-    document.getElementById('atajos-sectores').replaceChildren(...sectores.map(sector => {
+    // El primer atajo es «Todos los oficios», como en el desplegable: se puede volver a él sin subir
+    const opciones = [{ id: '', nombre: 'Todos los oficios' }, ...sectores];
+    document.getElementById('atajos-sectores').replaceChildren(...opciones.map(sector => {
       const boton = document.createElement('button');
       boton.type = 'button';
+      boton.dataset.sector = sector.id;
       boton.textContent = sector.nombre;
       boton.addEventListener('click', () => {
         selectSector.value = sector.id;
-        document.querySelectorAll('.atajos button').forEach(b => b.setAttribute('aria-pressed', b === boton));
+        marcarAtajo();
         if (ciudad) {
           buscar(1);
         } else {
           inputCiudad.focus();
-          inputCiudad.placeholder = `¿Dónde necesitas ${sector.nombre.toLowerCase()}?`;
+          inputCiudad.placeholder = sector.id
+            ? `¿Dónde necesitas ${sector.nombre.toLowerCase()}?`
+            : '¿Dónde lo necesitas?';
         }
       });
       return boton;
     }));
+    marcarAtajo();
   } catch (error) {
     mostrarMensaje('No se pudieron cargar los oficios. Recarga la página.');
   }
+
+  // Marca el atajo del oficio elegido, para que coincida siempre con el desplegable de arriba
+  function marcarAtajo() {
+    document.querySelectorAll('.atajos button').forEach(b => b.setAttribute('aria-pressed', b.dataset.sector === selectSector.value));
+  }
+  selectSector.addEventListener('change', marcarAtajo);
 
   // --- Ciudad: autocompletado con teclado ---
   const textoCiudad = c => `${c.nombre} (${c.provincia})`;
@@ -177,6 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function leerUrl() {
     const p = new URLSearchParams(location.search);
     selectSector.value = p.get('sector') || '';
+    marcarAtajo();
     filtroTipo.value = p.get('tipo') || '';
     filtroMax.value = p.get('max') || '';
     filtroOrden.value = p.get('orden') || 'precio-asc';
