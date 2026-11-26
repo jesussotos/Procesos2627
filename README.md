@@ -82,6 +82,8 @@ npm install
 
 Copia `.env.example` como `.env` y rellena los valores. `JWT_SECRET` es **obligatorio**: sin él el servidor no arranca.
 
+No subas tu `.env` ni archivos SQLite al repositorio: están excluidos en `.gitignore` y una prueba automática falla si se versionan. La base local (`servidor/database.sqlite`, o la que indique `DB_PATH`) se crea vacía al arrancar; en producción se usa Turso.
+
 | Variable | Obligatoria | Uso |
 |---|---|---|
 | `JWT_SECRET` | Sí | Firma de los tokens de sesión. |
